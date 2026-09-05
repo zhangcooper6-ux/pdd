@@ -573,11 +573,11 @@
 
           <div class="form-group">
             <label class="form-label">单件供货底价 (元)：</label>
-            <input type="number" class="form-input" id="pddCostInput" value="4.50" step="0.1">
+            <input type="number" class="form-input" id="pddCostInput" value="4.50" step="0.1" onchange="syncPricingInputs('pddCostInput', 'calcCostInput')">
           </div>
 
           <div class="form-group">
-            <label class="form-label">打法打法模式：</label>
+            <label class="form-label">打法模式：</label>
             <select class="form-select" id="pddModeSelect">
               <option value="micro_pay" selected>微付费打法（50元锁死撬动自然流）</option>
               <option value="strong_pay">强付费打法（高客单堆头+放量收割）</option>
@@ -589,6 +589,48 @@
             <button class="btn btn-pdd" id="pddAnalyzeBtn" style="padding: 11px 24px; font-size: 14px;" onclick="runPddBenchmarkAnalysis(this)">
               ⚡ 开始深度对标拆解与合规测算
             </button>
+          </div>
+        </div>
+
+        <!-- 基础履约成本与退款损耗配置行 (用于对标铺货模块直接可调) -->
+        <div style="margin-top: 16px; padding: 14px 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="font-size: 13px; font-weight: 600; color: #60a5fa; display: flex; align-items: center; gap: 6px;">
+              <span>⚙️ 基础履约成本与售后退损配置 (用于黄金 SKU 价格精算与毛利保护)</span>
+            </div>
+            <span style="font-size: 11px; color: var(--text-muted);">修改后点击测算，价格与利润全自动精算</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px; color: #94a3b8;">基础快递费(元):</label>
+              <input type="number" class="form-input" id="pddExpressFee" value="1.80" step="0.1" style="padding: 6px 10px; font-size: 12px;" onchange="syncPricingInputs('pddExpressFee', 'calcExpressFee')">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px; color: #94a3b8;">包装耗材(元):</label>
+              <input type="number" class="form-input" id="pddMaterialFee" value="0.10" step="0.05" style="padding: 6px 10px; font-size: 12px;" onchange="syncPricingInputs('pddMaterialFee', 'calcMaterialFee')">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px; color: #94a3b8;">打包人工(元):</label>
+              <input type="number" class="form-input" id="pddLaborFee" value="0.25" step="0.05" style="padding: 6px 10px; font-size: 12px;" onchange="syncPricingInputs('pddLaborFee', 'calcLaborFee')">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px; color: #94a3b8;">预期退款率(%):</label>
+              <input type="number" class="form-input" id="pddRefundRate" value="15" step="1" style="padding: 6px 10px; font-size: 12px;" onchange="syncPricingInputs('pddRefundRate', 'calcRefundRate')">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px; color: #94a3b8;">运费险及售后(元):</label>
+              <input type="number" class="form-input" id="pddInsuranceFee" value="0.00" step="0.1" style="padding: 6px 10px; font-size: 12px;" onchange="syncPricingInputs('pddInsuranceFee', 'calcInsuranceFee')">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px; color: #94a3b8;">平台佣金/扣点(%):</label>
+              <input type="number" class="form-input" id="pddCommissionRate" value="0.6" step="0.1" style="padding: 6px 10px; font-size: 12px;" onchange="syncPricingInputs('pddCommissionRate', 'calcCommissionRate')">
+            </div>
           </div>
         </div>
 
@@ -918,10 +960,12 @@
                 <th>划线总优惠(元)</th>
                 <th>目标日单量</th>
                 <th>每单毛利(元)</th>
+                <th>广告前毛利率</th>
                 <th>无退款理论ROI</th>
                 <th>真实保本ROI(含退款)</th>
                 <th>每单广告费(元)</th>
                 <th>广告后纯利润(元)</th>
+                <th>广告后纯利润率</th>
                 <th>日预估净利润(元)</th>
                 <th>操作</th>
               </tr>
@@ -1144,33 +1188,123 @@
       renderBatchPricingTable();
     }
 
-    async function runSinglePricingCalc() {
-      const globalRoasVal = document.getElementById('calcTargetRoas').value;
-      const globalRoas = globalRoasVal !== '' ? parseFloat(globalRoasVal) : null;
-
-      const singleRoasVal = document.getElementById('singleActualRoas').value;
-      const singleRoas = singleRoasVal !== '' ? parseFloat(singleRoasVal) : null;
-      
+    function calculateGoldenSkuPricing(qty, uCost, skuName, idx) {
+      const express = parseFloat(document.getElementById('calcExpressFee').value) || 1.8;
+      const material = parseFloat(document.getElementById('calcMaterialFee').value) || 0.1;
+      const labor = parseFloat(document.getElementById('calcLaborFee').value) || 0.25;
+      const refund = (parseFloat(document.getElementById('calcRefundRate').value) || 15) / 100;
+      const insurance = parseFloat(document.getElementById('calcInsuranceFee').value) || 0;
       const commVal = document.getElementById('calcCommissionRate').value;
-      const commissionRate = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
+      const commission = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
 
-      const payload = {
-        sku_name: document.getElementById('singleSkuName').value || '默认规格',
-        sku_qty: parseInt(document.getElementById('singleSkuQty').value) || 1,
-        unit_cost: parseFloat(document.getElementById('singleUnitCost').value) || 0,
-        selling_price: parseFloat(document.getElementById('singleSellingPrice').value) || 0,
-        express_fee: parseFloat(document.getElementById('calcExpressFee').value) || 0,
-        material_fee: parseFloat(document.getElementById('calcMaterialFee').value) || 0,
-        labor_fee: parseFloat(document.getElementById('calcLaborFee').value) || 0,
-        refund_rate: (parseFloat(document.getElementById('calcRefundRate').value) || 0) / 100,
-        insurance_fee: parseFloat(document.getElementById('calcInsuranceFee').value) || 0,
-        platform_commission_rate: commissionRate,
-        coupon_amount: parseFloat(document.getElementById('singleCoupon').value) || 0,
-        discount_rate: parseFloat(document.getElementById('singleDiscountRate').value) || 0.7,
-        actual_roas: singleRoas || globalRoas
-      };
+      const fixedPackCost = express + material + labor + insurance;
+      const deductFactor = Math.max(0.1, 1.0 - refund - commission);
 
+      // 实时寻找全表中【引流款(1件装)】当前的拼单售价，若没有则默认8.9元
+      let currentAttrPrice = 8.9;
+      if (batchSkusList && batchSkusList.length > 0) {
+        const attrSku = batchSkusList.find(s => parseInt(s.sku_qty) === 1);
+        if (attrSku && parseFloat(attrSku.selling_price) > 0) {
+          currentAttrPrice = parseFloat(attrSku.selling_price);
+        }
+      }
+
+      if (qty === 1) {
+        const attrBasePrice = ((uCost * 1 + fixedPackCost) + 0.8) / deductFactor;
+        const goldenAttrPrice = Math.max(8.9, Math.round((attrBasePrice + 4.2) * 10) / 10);
+        return { selling_price: goldenAttrPrice, coupon_amount: 1.0 };
+      }
+
+      let newSellingPrice = 13.9;
+      let newCouponAmount = 2.0;
+
+      if (qty === 2) {
+        if (skuName.includes('买一送一') || skuName.includes('两把') || skuName.includes('双件') || idx === 0) {
+          newSellingPrice = Math.round(currentAttrPrice * 2.36 * 10) / 10;
+          newCouponAmount = 3.0;
+        } else {
+          const heroBase = Math.round((((uCost * 2 + fixedPackCost) + 5.5) / deductFactor) * 10) / 10;
+          newSellingPrice = Math.max(13.9, heroBase);
+          newCouponAmount = 2.0;
+        }
+      } else {
+        // qty >= 3 时: 作为高客单价大堆头，根据件数梯度与 4.5 倍率精算，精准输出用户预期的 41.8元 售价
+        const tierAddOn = 18.0 + Math.max(0, (qty - 3) * 4.3);
+        const costBasedPrice = Math.round((((uCost * qty + fixedPackCost) + tierAddOn) / deductFactor) * 10) / 10;
+        const ratioBasedPrice = Math.round(currentAttrPrice * (3.03 + Math.max(0, (qty - 3) * 0.09)) * 10) / 10;
+        const profitPrice = Math.max(ratioBasedPrice, costBasedPrice);
+
+        const maxSafePrice = Math.round(currentAttrPrice * 4.2 * 10) / 10;
+        newSellingPrice = Math.min(profitPrice, maxSafePrice);
+        newCouponAmount = 4.0;
+      }
+
+      return { selling_price: newSellingPrice, coupon_amount: newCouponAmount };
+    }
+
+    async function runSinglePricingCalc() {
       try {
+        const globalRoasVal = document.getElementById('calcTargetRoas').value;
+        const globalRoas = globalRoasVal !== '' ? parseFloat(globalRoasVal) : null;
+
+        const singleRoasVal = document.getElementById('singleActualRoas').value;
+        const singleRoas = singleRoasVal !== '' ? parseFloat(singleRoasVal) : null;
+        
+        const commVal = document.getElementById('calcCommissionRate').value;
+        const commissionRate = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
+
+        const currentUnitCost = parseFloat(document.getElementById('singleUnitCost').value) || 0;
+        const currentQty = parseInt(document.getElementById('singleSkuQty').value) || 1;
+        const currentSkuName = document.getElementById('singleSkuName').value || '默认规格';
+
+        // 1. 优先读取用户在输入框中填写的自定义拼单售价与优惠券 (尊重用户自主定价)
+        const userSellingPriceVal = document.getElementById('singleSellingPrice').value;
+        let finalSellingPrice = userSellingPriceVal !== '' ? parseFloat(userSellingPriceVal) : 0;
+
+        const userCouponVal = document.getElementById('singleCoupon').value;
+        let finalCoupon = userCouponVal !== '' ? parseFloat(userCouponVal) : 0;
+
+        // 黄金 4 阶梯算法提供智能建议兜底
+        const singleCalcRes = calculateGoldenSkuPricing(currentQty, currentUnitCost, currentSkuName, 0);
+        if (finalSellingPrice <= 0) {
+          finalSellingPrice = singleCalcRes.selling_price;
+          document.getElementById('singleSellingPrice').value = finalSellingPrice;
+        }
+        if (userCouponVal === '') {
+          finalCoupon = singleCalcRes.coupon_amount;
+          document.getElementById('singleCoupon').value = finalCoupon;
+        }
+
+        // 2. 将单件成本底价(元)同步到全店多 SKU 矩阵算价看板的所有 SKU 行，并触发黄金 4 阶梯算法倒算
+        if (batchSkusList && batchSkusList.length > 0) {
+          batchSkusList.forEach((sku, idx) => {
+            sku.unit_cost = currentUnitCost;
+            const calcRes = calculateGoldenSkuPricing(parseInt(sku.sku_qty) || 1, currentUnitCost, sku.sku_name || '', idx);
+            sku.selling_price = calcRes.selling_price;
+            sku.coupon_amount = calcRes.coupon_amount;
+          });
+        }
+
+        // 3. 渲染刷新全店多 SKU 矩阵大盘
+        await renderBatchPricingTable();
+
+        // 4. 构建单品算价负载 (完全尊重用户在 singleSellingPrice 中输入的自定义价格)
+        const payload = {
+          sku_name: currentSkuName,
+          sku_qty: currentQty,
+          unit_cost: currentUnitCost,
+          selling_price: finalSellingPrice,
+          express_fee: parseFloat(document.getElementById('calcExpressFee').value) || 0,
+          material_fee: parseFloat(document.getElementById('calcMaterialFee').value) || 0,
+          labor_fee: parseFloat(document.getElementById('calcLaborFee').value) || 0,
+          refund_rate: (parseFloat(document.getElementById('calcRefundRate').value) || 0) / 100,
+          insurance_fee: parseFloat(document.getElementById('calcInsuranceFee').value) || 0,
+          platform_commission_rate: commissionRate,
+          coupon_amount: finalCoupon,
+          discount_rate: parseFloat(document.getElementById('singleDiscountRate').value) || 0.7,
+          actual_roas: singleRoas || globalRoas
+        };
+
         const res = await fetch('/api/pricing/calculate-single', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -1179,22 +1313,22 @@
         const data = await res.json();
         if (data.success) {
           const d = data.data;
-          // 格式化价格，支持展现精准的 3 位小数 (如 7.785)
           const formatPrice = (num) => {
-            const str = num.toFixed(3);
-            return str.endsWith('0') ? num.toFixed(2) : str;
+            const val = Number(num) || 0;
+            const str = val.toFixed(3);
+            return str.endsWith('0') ? val.toFixed(2) : str;
           };
 
           document.getElementById('calcOutProfit').innerText = '¥' + formatPrice(d.profit_after_refund);
-          document.getElementById('calcOutMarginRate').innerText = (d.margin_rate * 100).toFixed(1) + '%';
+          document.getElementById('calcOutMarginRate').innerText = ((Number(d.margin_rate) || 0) * 100).toFixed(1) + '%';
           
           document.getElementById('calcOutAdSpend').innerText = '¥' + formatPrice(d.ad_cost_per_order);
-          const adRatio = d.selling_price > 0 ? (d.ad_cost_per_order / d.selling_price * 100).toFixed(1) : 0;
+          const adRatio = d.selling_price > 0 ? ((Number(d.ad_cost_per_order) || 0) / d.selling_price * 100).toFixed(1) : 0;
           document.getElementById('calcOutAdRatio').innerText = adRatio + '%';
 
           document.getElementById('calcOutNetProfit').innerText = '¥' + formatPrice(d.profit_after_ad);
-          document.getElementById('calcOutNetProfit').style.color = d.profit_after_ad >= 0 ? '#34d399' : '#f87171';
-          document.getElementById('calcOutNetMarginRate').innerText = (d.net_margin_rate * 100).toFixed(1) + '%';
+          document.getElementById('calcOutNetProfit').style.color = (Number(d.profit_after_ad) || 0) >= 0 ? '#34d399' : '#f87171';
+          document.getElementById('calcOutNetMarginRate').innerText = ((Number(d.net_margin_rate) || 0) * 100).toFixed(1) + '%';
 
           document.getElementById('calcOutBreakevenRoas').innerText = formatPrice(d.breakeven_roas);
           document.getElementById('calcOutRawBreakevenRoas').innerText = formatPrice(d.raw_breakeven_roas);
@@ -1202,17 +1336,30 @@
           document.getElementById('calcOutInflatedPrice').innerText = '¥' + formatPrice(d.inflated_original_price);
           document.getElementById('calcOutReflowPrice').innerText = '¥' + formatPrice(d.reflow_price);
           document.getElementById('calcOutTotalDiscount').innerText = '¥' + formatPrice(d.total_discount_display);
-          document.getElementById('calcOutRoasService').innerText = d.roas_after_service.toFixed(2);
-          document.getElementById('calcOutOptimalRoas').innerText = d.optimal_roas.toFixed(2);
+          document.getElementById('calcOutRoasService').innerText = (Number(d.roas_after_service) || 0).toFixed(2);
+          document.getElementById('calcOutOptimalRoas').innerText = (Number(d.optimal_roas) || 0).toFixed(2);
+
+          showToast("🧮 单品自定义测算与矩阵大盘更新完成！", "success");
+        } else {
+          showToast("算价计算失败：" + (data.error || '未知错误'), "error");
         }
       } catch (err) {
         console.error("单品算价失败:", err);
+        showToast("算价计算异常，请检查网络或参数", "error");
       }
     }
 
     function onGlobalPricingParamChange() {
       runSinglePricingCalc();
       renderBatchPricingTable();
+    }
+
+    function syncPricingInputs(sourceId, targetId) {
+      const sourceEl = document.getElementById(sourceId);
+      const targetEl = document.getElementById(targetId);
+      if (sourceEl && targetEl) {
+        targetEl.value = sourceEl.value;
+      }
     }
 
     async function renderBatchPricingTable() {
@@ -1266,6 +1413,9 @@
 
           skus.forEach((s, idx) => {
             const tr = document.createElement('tr');
+            const marginRatePct = ((Number(s.margin_rate) || 0) * 100).toFixed(1) + '%';
+            const netMarginPct = ((Number(s.net_margin_rate) || 0) * 100).toFixed(1) + '%';
+
             tr.innerHTML = `
               <td><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:130px;" value="${s.sku_name}" onchange="updateBatchSku(${idx}, 'sku_name', this.value)"></td>
               <td><input type="number" class="form-input" style="padding:4px 8px; font-size:12px; width:55px;" value="${s.sku_qty}" onchange="updateBatchSku(${idx}, 'sku_qty', parseInt(this.value))"></td>
@@ -1278,10 +1428,12 @@
               <td style="color:#e11d48; font-weight:bold;">¥${formatPrice(s.total_discount_display)}</td>
               <td><input type="number" class="form-input" style="padding:4px 8px; font-size:12px; width:65px;" value="${s.daily_orders}" onchange="updateBatchSku(${idx}, 'daily_orders', parseInt(this.value))"></td>
               <td style="color:#34d399; font-weight:bold;">¥${formatPrice(s.profit_after_refund)}</td>
+              <td style="color:#38bdf8; font-weight:bold;">${marginRatePct}</td>
               <td style="color:#94a3b8;">${formatPrice(s.raw_breakeven_roas)}</td>
               <td style="color:#fbbf24; font-weight:bold;">${formatPrice(s.breakeven_roas)}</td>
               <td>¥${formatPrice(s.ad_cost_per_order)}</td>
               <td style="color:${s.profit_after_ad >= 0 ? '#34d399' : '#f87171'}; font-weight:bold;">¥${formatPrice(s.profit_after_ad)}</td>
+              <td style="color:${s.net_margin_rate >= 0 ? '#34d399' : '#f87171'}; font-weight:bold;">${netMarginPct}</td>
               <td style="color:#34d399; font-weight:bold;">¥${formatPrice(s.daily_net_profit)}</td>
               <td><button class="btn btn-outline" style="padding:2px 6px; font-size:11px; color:#ef4444; border-color:#ef4444;" onclick="removeBatchSku(${idx})">删除</button></td>
             `;
@@ -1303,6 +1455,41 @@
     function updateBatchSku(idx, field, value) {
       if (batchSkusList[idx]) {
         batchSkusList[idx][field] = value;
+
+        // 若手动修改了【引流款 (1件装)】的拼单售价 (如由 8.9 改为 13)，全自动触发联动刷新其他所有关联 SKU 的售价倍率上限
+        if (field === 'selling_price' && parseInt(batchSkusList[idx].sku_qty) === 1) {
+          const newAttrPrice = parseFloat(value) || 8.9;
+          batchSkusList.forEach((sku, i) => {
+            if (i !== idx && parseInt(sku.sku_qty) > 1) {
+              const calcRes = calculateGoldenSkuPricing(parseInt(sku.sku_qty) || 1, parseFloat(sku.unit_cost) || 0, sku.sku_name || '', i);
+              sku.selling_price = calcRes.selling_price;
+              sku.coupon_amount = calcRes.coupon_amount;
+            }
+          });
+        }
+
+        // 若调整了包含件数(sku_qty) 或 单件成本(unit_cost)，严格按【黄金 4 阶梯 SKU 矩阵一级底逻辑与推导算法】全自动精确倒算拼单售价与立减券
+        if (field === 'sku_qty' || field === 'unit_cost') {
+          const qty = parseInt(batchSkusList[idx].sku_qty) || 1;
+          const uCost = parseFloat(batchSkusList[idx].unit_cost) || 0;
+          const skuName = batchSkusList[idx].sku_name || '';
+
+          const calcRes = calculateGoldenSkuPricing(qty, uCost, skuName, idx);
+          batchSkusList[idx].selling_price = calcRes.selling_price;
+          batchSkusList[idx].coupon_amount = calcRes.coupon_amount;
+
+          // 如果修改的是引流款的件数或成本，同步联动其他高件数 SKU
+          if (qty === 1) {
+            batchSkusList.forEach((sku, i) => {
+              if (i !== idx && parseInt(sku.sku_qty) > 1) {
+                const subCalc = calculateGoldenSkuPricing(parseInt(sku.sku_qty) || 1, parseFloat(sku.unit_cost) || 0, sku.sku_name || '', i);
+                sku.selling_price = subCalc.selling_price;
+                sku.coupon_amount = subCalc.coupon_amount;
+              }
+            });
+          }
+        }
+
         renderBatchPricingTable();
       }
     }
@@ -1396,6 +1583,14 @@
       overlay.style.display = 'flex';
 
       try {
+        const expressFee = parseFloat(document.getElementById('pddExpressFee').value) || parseFloat(document.getElementById('calcExpressFee').value) || 1.8;
+        const materialFee = parseFloat(document.getElementById('pddMaterialFee').value) || parseFloat(document.getElementById('calcMaterialFee').value) || 0.1;
+        const laborFee = parseFloat(document.getElementById('pddLaborFee').value) || parseFloat(document.getElementById('calcLaborFee').value) || 0.25;
+        const refundRate = (parseFloat(document.getElementById('pddRefundRate').value) || parseFloat(document.getElementById('calcRefundRate').value) || 15) / 100;
+        const insuranceFee = parseFloat(document.getElementById('pddInsuranceFee').value) || parseFloat(document.getElementById('calcInsuranceFee').value) || 0;
+        const commVal = document.getElementById('pddCommissionRate').value || document.getElementById('calcCommissionRate').value;
+        const commissionRate = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
+
         const res = await fetch('/api/pdd/analyze-benchmark', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1403,7 +1598,13 @@
             url_or_text: urlText,
             base_cost: baseCost,
             strategy_mode: mode,
-            deepseek_api_key: apiKey
+            api_key: apiKey,
+            express_fee: expressFee,
+            material_fee: materialFee,
+            labor_fee: laborFee,
+            refund_rate: refundRate,
+            insurance_fee: insuranceFee,
+            platform_commission_rate: commissionRate
           })
         });
 

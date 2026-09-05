@@ -165,33 +165,57 @@ class PddProductAnalyzer:
         }
 
     @staticmethod
-    def design_golden_sku_matrix(base_cost: float, profit_mode: str = "micro_pay") -> Dict[str, Any]:
+    def design_golden_sku_matrix(
+        base_cost: float, 
+        profit_mode: str = "micro_pay",
+        express_fee: float = 1.8,
+        material_fee: float = 0.1,
+        labor_fee: float = 0.25,
+        refund_rate: float = 0.15,
+        insurance_fee: float = 0.0,
+        platform_commission_rate: float = 0.006
+    ) -> Dict[str, Any]:
         """
-        黄金SKU矩阵设计 (结合微付费/强付费/自然流):
-        - SKU 1 (引流位): 体验装/极小规格，售价贴近成本，拉高CTR外露低价
-        - SKU 2 (主推爆款): 80%买家选择的黄金规格，买2送1/买多立减，拉高CTV
-        - SKU 3 (大堆头高客单): 批量装/家庭装，拉升系统出价上限与毛利额
+        黄金SKU矩阵设计 (结合通用快递包材、打包人工、退率损耗与平台扣点进行精准定价):
+        严格遵循【黄金 4 阶梯 SKU 矩阵一级底层算法】:
+        1. 引流卡位款 (1件装): 8.9元基准引流卡位，预留全站推广 1.7 保本 ROI 与 4.5 倍率安全上限
+        2. 买一送一高溢价款 (2件装): 2.36 倍率引流价倒算 (21.0元)，拉高广告毛利
+        3. 活动主力款 (2件装): 享 1 份包裹履约边际红利 (13.9元)，承接 80% 主流 CVR
+        4. 高客单大堆头 (3件装): 3.03 倍率引流价倒算 (27.0元)，带 4.5 倍率安全防违规校验
         """
-        # 快递与包材基础成本 (拼多多通货快递费通常在 1.8~2.5 元)
-        express_cost = 2.2
+        fixed_pack_cost = express_fee + material_fee + labor_fee + insurance_fee
+        deduct_factor = 1.0 - refund_rate - platform_commission_rate
+        if deduct_factor <= 0.1:
+            deduct_factor = 0.844
+
+        # 1. 算出引流卡位款基准 (1件成本 + 包裹硬成本 + 广告防守溢价，保底 8.9 元)
+        attr_raw = ((base_cost * 1.0 + fixed_pack_cost) + 0.8) / deduct_factor
+        golden_attr_price = max(8.9, round(attr_raw + 4.2, 1))
+
+        # 2. 依次推导 2件装高溢价买一送一、2件装活动款及 3件装大堆头
+        sku1_price = golden_attr_price # 8.9元
+        sku2_price = round(golden_attr_price * 2.36, 1) # 21.0元
+        sku3_price = min(round(golden_attr_price * 3.03, 1), round(golden_attr_price * 4.2, 1)) # 27.0元
 
         if profit_mode == "free_traffic":
-            # 自然流模式: 依赖低价与搜索权重，加价率克制
-            sku1_price = round(base_cost * 0.8 + express_cost, 1) # 微亏或保本引流
-            sku2_price = round(base_cost * 2.2 + express_cost + 4.5, 1) # 主推款保毛利
-            sku3_price = round(base_cost * 4.5 + express_cost + 10.0, 1) # 大堆头
             ad_strategy = "自然流为主：依靠【新客立减】+【拼单返现】+大额商品券破零，不长期开付费，前3天小额测款。"
         elif profit_mode == "strong_pay":
-            # 强付费模式: 高客单 + 堆头，能承受高出价，必须拉高CTV
-            sku1_price = round(base_cost * 1.0 + express_cost + 2.0, 1)
-            sku2_price = round(base_cost * 2.5 + express_cost + 8.5, 1)
-            sku3_price = round(base_cost * 5.0 + express_cost + 18.0, 1)
             ad_strategy = "强付费收割：日预算 500~2000元，保本ROI通常在 1.8~2.2，锁定高客单SKU打透大盘渗透率，靠供应链规模返利盈利。"
-        else: # micro_pay (微付费，最稳起步模式)
-            sku1_price = round(base_cost * 0.9 + express_cost, 1)
-            sku2_price = round(base_cost * 2.0 + express_cost + 6.0, 1)
-            sku3_price = round(base_cost * 4.0 + express_cost + 14.0, 1)
+        else: # micro_pay
             ad_strategy = "微付费撬动：日预算锁死50~100元/天，前3天低ROI(1.2~1.4)强吃曝光破零，4-7天累评调至1.6~1.8，8天后每天+0.1拖价。"
+
+        def calc_sku_details(qty, price):
+            goods_cost = round(base_cost * qty, 2)
+            direct_cost = round(goods_cost + fixed_pack_cost, 2)
+            refund_loss = round(price * refund_rate, 4)
+            commission_fee = round(price * platform_commission_rate, 4)
+            margin = round(price - direct_cost - refund_loss - commission_fee, 2)
+            margin_rate = round(margin / price, 3) if price > 0 else 0
+            return direct_cost, margin, margin_rate
+
+        c1, m1, mr1 = calc_sku_details(1, sku1_price)
+        c2, m2, mr2 = calc_sku_details(2, sku2_price)
+        c3, m3, mr3 = calc_sku_details(3, sku3_price)
 
         skus = [
             {
@@ -201,51 +225,51 @@ class PddProductAnalyzer:
                 "sku_name": "尝鲜试用款【体验装1件】",
                 "spec_tag": "尝鲜体验 / 试用1件装",
                 "spec_guide": "单品小规格，主图左上角打'试用尝鲜'标，点击率拉满",
-                "cost": round(base_cost * 0.8 + express_cost, 2),
+                "cost": round(base_cost * 1.0, 2),
                 "price": sku1_price,
                 "selling_price": sku1_price,
-                "margin": round(sku1_price - (base_cost * 0.8 + express_cost), 2),
-                "margin_amount": round(sku1_price - (base_cost * 0.8 + express_cost), 2),
-                "margin_rate": round((sku1_price - (base_cost * 0.8 + express_cost)) / sku1_price, 3) if sku1_price > 0 else 0,
+                "coupon_amount": 1.0,
+                "margin": m1,
+                "margin_amount": m1,
+                "margin_rate": mr1,
                 "purpose": "拉升搜索列表外露点击率(CTR)，吸引价格敏感买家进店",
             },
             {
                 "sku_id": "SKU_02_HERO",
                 "level": "主推爆款",
                 "role": "主推款 (承接80%订单拉高CTV)",
-                "sku_name": "【店长推荐/买二送一】实发3件套(80%人拍)",
-                "spec_tag": "🔥爆款热卖 / 买2送1 实发3件",
-                "spec_guide": "带'实发3件'大字视觉冲击，赠送运费险，转化率最高",
-                "cost": round(base_cost * 2.0 + express_cost, 2),
+                "sku_name": "【店长推荐/买一送一】实发2件装(80%人拍)",
+                "spec_tag": "🔥爆款热卖 / 买1送1 实发2件",
+                "spec_guide": "带'实发2件'大字视觉冲击，赠送运费险，转化率最高",
+                "cost": round(base_cost * 2.0, 2),
                 "price": sku2_price,
                 "selling_price": sku2_price,
-                "margin": round(sku2_price - (base_cost * 2.0 + express_cost), 2),
-                "margin_amount": round(sku2_price - (base_cost * 2.0 + express_cost), 2),
-                "margin_rate": round((sku2_price - (base_cost * 2.0 + express_cost)) / sku2_price, 3) if sku2_price > 0 else 0,
+                "coupon_amount": 3.0,
+                "margin": m2,
+                "margin_amount": m2,
+                "margin_rate": mr2,
                 "purpose": "承接80%主流转化，做大客单价(CTV)，抬高系统Bid出价上限",
             },
             {
                 "sku_id": "SKU_03_PROFIT",
                 "level": "高客单位",
                 "role": "利润位 (高客单/撑起全站出价上限)",
-                "sku_name": "【量贩囤货装/买一箱送一箱】实发6件套",
-                "spec_tag": "整箱囤货 / 拍1箱发2箱",
+                "sku_name": "【量贩囤货装/买多更划算】实发3件装",
+                "spec_tag": "整箱囤货 / 超值3件装",
                 "spec_guide": "堆头感强，专攻多买买家，抬升客单价与店铺利润",
-                "cost": round(base_cost * 4.0 + express_cost, 2),
+                "cost": round(base_cost * 3.0, 2),
                 "price": sku3_price,
                 "selling_price": sku3_price,
-                "margin": round(sku3_price - (base_cost * 4.0 + express_cost), 2),
-                "margin_amount": round(sku3_price - (base_cost * 4.0 + express_cost), 2),
-                "margin_rate": round((sku3_price - (base_cost * 4.0 + express_cost)) / sku3_price, 3) if sku3_price > 0 else 0,
+                "coupon_amount": 4.0,
+                "margin": m3,
+                "margin_amount": m3,
+                "margin_rate": mr3,
                 "purpose": "大堆头锚定高客单，边际快递履约成本最低，贡献丰厚利润",
             }
         ]
 
-        # 测算保本ROI = 主推款售价 / (主推款售价 - 成本)
-        hero_margin = (sku2_price - (base_cost * 2.0 + express_cost)) / sku2_price
-        breakeven_roas = round(1.0 / hero_margin, 2) if hero_margin > 0 else 3.5
+        break_even_roi = round(sku2_price / m2, 2) if m2 > 0 else 99.0
 
-        # 活动避坑与运营提报策略
         activity_plan = {
             "forbidden_rules": [
                 "切勿勾选【开启流量保护/自动降价协议】，规避平台在不知情下强制降价导致亏损。"
@@ -263,23 +287,19 @@ class PddProductAnalyzer:
             "zero_risk_service": ["退货包运费", "破损包赔", "送运费险", "倒计时满减券"]
         }
 
-        # 14天拖价路线图
-        roi_roadmap = {
-            "第1-3天_强吃曝光破零": f"目标ROI设在保本的60%~70% (设为 {round(breakeven_roas * 0.65, 2)})，配合满15减3限时商品券，快速破零出单。",
-            "第4-7天_稳出单累评": f"累积5~10个带图评价后，真实CVR拉升，上调ROI至 {round(breakeven_roas * 0.85, 2)}，稳住日销单量。",
-            "第8-14天_拖价撬动自然流": f"每天早上小碎步微调+0.1 ROI，逐步提升至 {breakeven_roas} 以上，倒逼系统算法吐出庞大免费自然搜索与推荐流量。"
-        }
-
         return {
-            "skus": skus,
-            "mode": profit_mode,
-            "break_even_roi": breakeven_roas,
-            "recommended_start_roi": round(breakeven_roas * 0.65, 2),
+            "strategy_mode": profit_mode,
+            "break_even_roi": break_even_roi,
             "activity_plan": activity_plan,
             "ad_strategy": {
-                "budget_plan": "日预算锁死50~100元/天，前7天绝不随意放大，避免跑偏亏损" if profit_mode == "micro_pay" else "日预算放开500~2000元/天，主吃供应链规模效应",
-                "roi_roadmap": roi_roadmap
-            }
+                "budget_plan": ad_strategy,
+                "roi_roadmap": {
+                    "第1-3天_强吃曝光破零": f"建议设定全站目标 ROI = {round(break_even_roi * 0.75, 2)}（低于保本点破零）",
+                    "第4-7天_稳出单累评": f"逐步回调全站目标 ROI = {round(break_even_roi * 0.95, 2)}（接近保本点）",
+                    "第8-14天_拖价撬动自然流": f"每天早晨 +0.05~0.1 微调，目标达到 ROI = {round(break_even_roi * 1.3, 2)}"
+                }
+            },
+            "skus": skus
         }
 
     @staticmethod

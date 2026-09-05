@@ -196,9 +196,15 @@ async def download_template():
 # 定义对标请求体
 class BenchmarkAnalyzeRequest(BaseModel):
     url_or_text: str
-    base_cost: float = 6.0
+    base_cost: float = 4.5
     strategy_mode: str = "micro_pay" # free_traffic, micro_pay, strong_pay
     api_key: Optional[str] = None
+    express_fee: float = 1.8
+    material_fee: float = 0.1
+    labor_fee: float = 0.25
+    refund_rate: float = 0.15
+    insurance_fee: float = 0.0
+    platform_commission_rate: float = 0.006
 
 @app.post("/api/pdd/analyze-benchmark")
 async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
@@ -214,8 +220,17 @@ async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
     # 3. 标题与命名规则重塑
     titles = PddProductAnalyzer.restructure_title_and_rules(raw_info["raw_title"], raw_info["selling_points"])
     
-    # 4. 黄金SKU矩阵与推广出价测算
-    sku_matrix = PddProductAnalyzer.design_golden_sku_matrix(req.base_cost, req.strategy_mode)
+    # 4. 黄金SKU矩阵与推广出价测算 (接入全局快递、包材、退率与扣点)
+    sku_matrix = PddProductAnalyzer.design_golden_sku_matrix(
+        base_cost=req.base_cost, 
+        profit_mode=req.strategy_mode,
+        express_fee=req.express_fee,
+        material_fee=req.material_fee,
+        labor_fee=req.labor_fee,
+        refund_rate=req.refund_rate,
+        insurance_fee=req.insurance_fee,
+        platform_commission_rate=req.platform_commission_rate
+    )
     
     # 5. 生图与视觉重塑提示词
     visuals = PddProductAnalyzer.generate_ai_visual_prompts(titles["title_plans"][0]["title"], raw_info["selling_points"])
