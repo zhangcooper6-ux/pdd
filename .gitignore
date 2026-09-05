@@ -1,0 +1,21 @@
+# Python 缓存与虚拟环境
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# IDE 与编辑器配置
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 临时与导出文件
+ecommerce_assistant/output/
+*.log
+*.tmp

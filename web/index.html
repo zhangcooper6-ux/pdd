@@ -1,0 +1,1715 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>全域电商经营助手 - 拼多多爆款对标与合规铺货 SOP 系统</title>
+  <!-- 引入现代字体与 ECharts -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #070a13;
+      --bg-card: #0f172a;
+      --bg-card-hover: #1e293b;
+      --border-color: #1e293b;
+      --border-highlight: #3b82f6;
+      --primary: #4f46e5;
+      --primary-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      --pdd-gradient: linear-gradient(135deg, #ff4d4d 0%, #dc2626 100%);
+      --accent-purple: #8b5cf6;
+      --accent-cyan: #06b6d4;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-sub: #64748b;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --glass-bg: rgba(15, 23, 42, 0.85);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Noto Sans CJK SC", "WenQuanYi Micro Hei", sans-serif;
+      min-height: 100vh;
+      padding-bottom: 60px;
+      overflow-x: hidden;
+    }
+
+    /* 顶部导航 Header */
+    header {
+      background: rgba(11, 15, 25, 0.9);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 14px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-logo {
+      width: 40px;
+      height: 40px;
+      background: var(--pdd-gradient);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 20px;
+      color: #fff;
+      box-shadow: 0 0 15px rgba(220, 38, 38, 0.4);
+    }
+
+    .brand-title h1 {
+      font-size: 18px;
+      font-weight: 800;
+      background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-title p {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* 主 Tab 切换导航 */
+    .tab-nav {
+      display: flex;
+      background: #0f172a;
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid #1e293b;
+      gap: 4px;
+    }
+
+    .tab-nav-btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tab-nav-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-nav-btn.active {
+      background: var(--primary-gradient);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    /* 现代高质感按钮 */
+    .btn {
+      background: #1e293b;
+      color: var(--text-main);
+      border: 1px solid #334155;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn:hover {
+      background: #334155;
+      border-color: #475569;
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: var(--primary-gradient);
+      border-color: #6366f1;
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
+    }
+
+    .btn-pdd {
+      background: var(--pdd-gradient);
+      border-color: #ef4444;
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+    }
+
+    .btn-pdd:hover {
+      box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px dashed #475569;
+      color: #cbd5e1;
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: #94a3b8;
+    }
+
+    /* 容器布局 */
+    .container {
+      max-width: 1480px;
+      margin: 24px auto;
+      padding: 0 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* 科技感大卡片 */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      position: relative;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-title-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    /* 指标卡片网格 */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+    }
+
+    .metric-card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.25s;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--primary);
+    }
+
+    .metric-card.tmall::before { background: #ff0036; }
+    .metric-card.jd::before { background: #e1251b; }
+    .metric-card.douyin::before { background: #00f2fe; }
+    .metric-card.pdd::before { background: #e02e24; }
+    .metric-card.success::before { background: #10b981; }
+    .metric-card.warning::before { background: #f59e0b; }
+
+    .metric-title {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .metric-value {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #f8fafc;
+    }
+
+    .metric-sub {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text-sub);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* 标签徽章 */
+    .badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .badge-pdd { background: rgba(224, 46, 36, 0.15); color: #ff6b6b; border: 1px solid rgba(224, 46, 36, 0.3); }
+    .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-info { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+
+    /* 网格与图表 */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 20px;
+    }
+
+    .col-12 { grid-column: span 12; }
+    .col-7 { grid-column: span 7; }
+    .col-5 { grid-column: span 5; }
+    .col-6 { grid-column: span 6; }
+
+    .chart-box {
+      width: 100%;
+      height: 350px;
+    }
+
+    /* 高质感数据表格 */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      border-radius: 10px;
+      border: 1px solid #1e293b;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    th {
+      background: #162032;
+      color: #94a3b8;
+      padding: 14px 16px;
+      font-weight: 600;
+      border-bottom: 1px solid #1e293b;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #1e293b;
+      color: #cbd5e1;
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: #162032;
+    }
+
+    /* 输入表单控件 */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+
+    .form-input, .form-select {
+      background: #090d16;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus, .form-select:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    }
+
+    /* 全屏加载与提示 Toast */
+    .toast-container {
+      position: fixed;
+      top: 80px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+
+    .toast-success { border-color: #10b981; background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .toast-error { border-color: #ef4444; background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* 分析进度 Modal */
+    .progress-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(7, 10, 19, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .progress-modal {
+      background: #0f172a;
+      border: 1px solid #334155;
+      width: 480px;
+      max-width: 90%;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      text-align: center;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(99, 102, 241, 0.2);
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 1s infinite linear;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .step-list {
+      margin-top: 20px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .step-item {
+      font-size: 13px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .step-item.active { color: #818cf8; font-weight: 600; }
+    .step-item.done { color: #34d399; }
+
+    /* 响应式 */
+    @media (max-width: 1024px) {
+      .col-7, .col-5, .col-6 { grid-column: span 12; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast 消息节点 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- 分析中进度全屏遮罩 Modal -->
+  <div class="progress-overlay" id="progressOverlay">
+    <div class="progress-modal">
+      <div class="spinner"></div>
+      <h3 style="font-size: 18px; color: #f8fafc; margin-bottom: 8px;">🚀 正在运行拼多多爆款对标与合规计算...</h3>
+      <p style="font-size: 13px; color: #94a3b8;">结合算法防限流模型与黄金 SKU 利润矩阵</p>
+      
+      <div class="step-list">
+        <div class="step-item done" id="step1">✔ 1. 解析商品链接与对标结构 ID</div>
+        <div class="step-item active" id="step2">⏳ 2. 极限词与高低价 SKU 4.5 倍率防限流检测...</div>
+        <div class="step-item" id="step3">🔒 3. 计算保本 ROI 与倒推 14 天拖价出价模型</div>
+        <div class="step-item" id="step4">💎 4. 重塑防撞词高权重标题与生成视觉 Prompt</div>
+        <div class="step-item" id="step5">📄 5. 封装拼多多商家后台 (MMS) CSV 铺货规范</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 顶部 Header 导航 -->
+  <header>
+    <div class="brand-section">
+      <div class="brand-logo">拼</div>
+      <div class="brand-title">
+        <h1>全域电商经营助手 v2.5</h1>
+        <p>四平台诊断 & 拼多多爆款无货源起爆 SOP</p>
+      </div>
+    </div>
+
+    <!-- 核心 Tab 切换 -->
+    <div class="tab-nav">
+      <button class="tab-nav-btn active" id="tabBtnPdd" onclick="switchMainTab('pdd')">
+        🔥 拼多多对标铺货 SOP
+      </button>
+      <button class="tab-nav-btn" id="tabBtnPricing" onclick="switchMainTab('pricing')">
+        🧮 智能算价与投产模拟器
+      </button>
+      <button class="tab-nav-btn" id="tabBtnOmni" onclick="switchMainTab('omni')">
+        🌐 四平台全域大盘
+      </button>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-outline" onclick="downloadSopDoc()">📄 下载完整SOP.md</button>
+      <button class="btn btn-outline" onclick="downloadTemplate()">📥 填报模板</button>
+      <button class="btn btn-primary" onclick="openUploadModal()">📤 上传经营数据</button>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- ==================== TAB 1: 拼多多对标与合规铺货SOP (默认展示) ==================== -->
+    <div id="pddSection" style="display: flex; flex-direction: column; gap: 24px;">
+
+      <!-- 输入与配置控制板 -->
+      <div class="card" style="background: linear-gradient(135deg, #0f172a 0%, #171d34 100%); border: 1px solid #3b82f6;">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-title-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">🎯</div>
+            <span>拼多多爆款链接深度对标拆解与无货源合规铺货引擎</span>
+          </div>
+          <span class="badge badge-pdd">🛡️ 已集成拼多多 MMS 官方规范 & 防高低价限流算法</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 16px; align-items: end;">
+          <div class="form-group">
+            <label class="form-label">对标商品链接 / 口令 / 商品ID：</label>
+            <input type="text" class="form-input" id="pddBenchmarkInput" 
+                   value="https://mobile.yangkeduo.com/goods.php?goods_id=109827364512" 
+                   placeholder="输入拼多多商品链接、分享口令或 ID">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">单件供货底价 (元)：</label>
+            <input type="number" class="form-input" id="pddCostInput" value="4.50" step="0.1">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">打法打法模式：</label>
+            <select class="form-select" id="pddModeSelect">
+              <option value="micro_pay" selected>微付费打法（50元锁死撬动自然流）</option>
+              <option value="strong_pay">强付费打法（高客单堆头+放量收割）</option>
+              <option value="natural_flow">纯自然流打法（极致比价+活动门槛）</option>
+            </select>
+          </div>
+
+          <div>
+            <button class="btn btn-pdd" id="pddAnalyzeBtn" style="padding: 11px 24px; font-size: 14px;" onclick="runPddBenchmarkAnalysis(this)">
+              ⚡ 开始深度对标拆解与合规测算
+            </button>
+          </div>
+        </div>
+
+        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted);">
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <span>💡 快捷测试：</span>
+            <button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="fillSampleUrl('109827364512')">示例1: 高级收纳箱</button>
+            <button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="fillSampleUrl('98765432101')">示例2: 爆款保温杯</button>
+          </div>
+
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span>DeepSeek API Key (可选):</span>
+            <input type="password" class="form-input" id="deepseekApiKey" placeholder="sk-..." style="padding: 4px 8px; font-size: 11px; width: 180px;">
+          </div>
+        </div>
+      </div>
+
+      <!-- 分析结果面板 (默认隐藏，点击后展示) -->
+      <div id="pddAnalysisResult" style="display: none; flex-direction: column; gap: 24px;">
+
+        <!-- 1. 三大合规与保本概览卡片 -->
+        <div class="metric-grid">
+          <div class="metric-card success">
+            <div class="metric-title">🛡️ 平台合规检测结论</div>
+            <div class="metric-value" id="complianceStatus" style="font-size: 20px; color: #34d399;">检测通过 (100%)</div>
+            <div class="metric-sub" id="complianceDetails">无违禁极限词，无知名品牌侵权词</div>
+          </div>
+
+          <div class="metric-card warning">
+            <div class="metric-title">⚖️ SKU 高低价引流倍率检测</div>
+            <div class="metric-value" id="priceRatioStatus" style="font-size: 20px; color: #60a5fa;">3.82x (安全)</div>
+            <div class="metric-sub">拼多多红线 4.5 倍以内，无封店风险</div>
+          </div>
+
+          <div class="metric-card pdd">
+            <div class="metric-title">🎯 推荐全站推广保本 ROI</div>
+            <div class="metric-value" id="targetRoiStatus" style="font-size: 20px; color: #fbbf24;">保本 ROI 1.95</div>
+            <div class="metric-sub" id="roiStrategyBrief">前3天低投产1.30强行吃曝光破零</div>
+          </div>
+        </div>
+
+        <!-- 2. 黄金 SKU 矩阵表格 -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="card-title-icon">💎</div>
+              <span>黄金 SKU 矩阵设计（引流款 + 主推款 + 高客单大堆头）</span>
+            </div>
+            <span class="badge badge-info">防比价与拉升 CTV 客单价</span>
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>SKU 层级</th>
+                  <th>规格名称 (可直接复制)</th>
+                  <th>规格图文案标注</th>
+                  <th>供货成本</th>
+                  <th>拼单售价</th>
+                  <th>单笔毛利</th>
+                  <th>毛利率</th>
+                  <th>策略定位与算法作用</th>
+                </tr>
+              </thead>
+              <tbody id="pddSkuTableBody">
+                <!-- 动态填充 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3. 标题重塑方案 & 官方活动提报 -->
+        <div class="charts-grid">
+          <div class="card col-7">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="card-title-icon">🏷️</div>
+                <span>防撞词高权重标题重塑方案</span>
+              </div>
+            </div>
+            <div id="titlePlansContainer" style="display: flex; flex-direction: column; gap: 12px;">
+              <!-- 动态填充 -->
+            </div>
+          </div>
+
+          <div class="card col-5">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="card-title-icon">🎪</div>
+                <span>官方活动提报与压价避坑指南</span>
+              </div>
+            </div>
+            <div id="activityAdviceContainer" style="font-size: 13px; color: #cbd5e1; line-height: 1.7;">
+              <!-- 动态填充 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. AI 视觉 Prompt 与 小碎步拖价全景 -->
+        <div class="charts-grid">
+          <div class="card col-7">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="card-title-icon">🎨</div>
+                <span>AI 生图提示词 (Midjourney / Seedream / Flux)</span>
+              </div>
+              <button class="btn btn-outline" style="padding: 4px 10px; font-size: 11px;" onclick="copyAllPrompts()">📋 一键复制生图 Prompt</button>
+            </div>
+            <div id="visualPromptsContainer" style="display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+              <!-- 动态填充 -->
+            </div>
+          </div>
+
+          <div class="card col-5">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="card-title-icon">📈</div>
+                <span>全站推广 14 天小碎步拖价路线图</span>
+              </div>
+            </div>
+            <div id="roiStepContainer" style="font-size: 13px; color: #cbd5e1; line-height: 1.8;">
+              <!-- 动态填充 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. 一键铺货导出卡片 -->
+        <div class="card" style="background: linear-gradient(135deg, #111e38 0%, #1e1b4b 100%); border: 1px solid #4338ca; text-align: center; padding: 32px;">
+          <h3 style="font-size: 18px; color: #a5b4fc; margin-bottom: 8px;">🚀 拼多多商家后台 (MMS) 批量上架文件就绪</h3>
+          <p style="font-size: 13px; color: #94a3b8; margin-bottom: 20px; max-width: 600px; margin-left: auto; margin-right: auto;">
+            系统已按照拼多多商家后台商品批量导入标准（符合 <code>pdd.goods.add</code> 规范）封装上架文件，支持一键导出 CSV 格式或复制 OpenAPI JSON 入参。
+          </p>
+          <div style="display: flex; justify-content: center; gap: 16px;">
+            <button class="btn btn-pdd" style="padding: 12px 30px; font-size: 15px;" onclick="downloadPddImportFile('csv')">
+              📥 导出拼多多批量导入 CSV 文件
+            </button>
+            <button class="btn btn-outline" style="padding: 12px 24px; font-size: 15px;" onclick="copyPddOpenApiParams()">
+              📋 复制 pdd.goods.add 入参 JSON
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ==================== TAB 2: 电商高阶算价表与投产反算模拟器 (线上化) ==================== -->
+    <div id="pricingSection" style="display: none; flex-direction: column; gap: 24px;">
+
+      <!-- 通用成本与营销参数全局配置 -->
+      <div class="card" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border: 1px solid #6366f1;">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-title-icon" style="background: rgba(99, 102, 241, 0.2); color: #818cf8;">🧮</div>
+            <span>电商通用算价与付费投产倒推引擎 (支持微付费/半付费/强付费模式)</span>
+          </div>
+          <span class="badge badge-info">完全还原 Excel 算价表公式与打法模型</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end;">
+          <div class="form-group">
+            <label class="form-label">基础快递包材费 (元)：</label>
+            <input type="number" class="form-input" id="calcExpressFee" value="1.80" step="0.1" onchange="onGlobalPricingParamChange()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">每单包装耗材 (元)：</label>
+            <input type="number" class="form-input" id="calcMaterialFee" value="0.10" step="0.05" onchange="onGlobalPricingParamChange()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">人工及打包费 (元)：</label>
+            <input type="number" class="form-input" id="calcLaborFee" value="0.25" step="0.05" onchange="onGlobalPricingParamChange()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">预期退货退款率 (%)：</label>
+            <input type="number" class="form-input" id="calcRefundRate" value="15" step="1" onchange="onGlobalPricingParamChange()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">运费险及售后损耗 (元)：</label>
+            <input type="number" class="form-input" id="calcInsuranceFee" value="0.00" step="0.1" onchange="onGlobalPricingParamChange()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">平台佣金/扣点比例 (%)：</label>
+            <input type="number" class="form-input" id="calcCommissionRate" value="0.6" step="0.1" onchange="onGlobalPricingParamChange()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">实际全站设定 ROAS (选填)：</label>
+            <input type="number" class="form-input" id="calcTargetRoas" placeholder="没填则按真实保本ROI" step="0.1" onchange="onGlobalPricingParamChange()">
+          </div>
+        </div>
+      </div>
+
+      <!-- 单 SKU 极速算价与投产阶梯卡片 -->
+      <div class="charts-grid">
+        <div class="card col-5" style="border-color: #38bdf8;">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="card-title-icon" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8;">⚡</div>
+              <span>单品快捷算价计算器</span>
+            </div>
+            <button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="loadPresetPricing('micro')">载入微付费示例</button>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="form-group">
+              <label class="form-label">SKU / 规格名称：</label>
+              <input type="text" class="form-input" id="singleSkuName" value="一把装 (精装版)">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">包含单件数量 (件)：</label>
+                <input type="number" class="form-input" id="singleSkuQty" value="1" min="1">
+              </div>
+              <div class="form-group">
+                <label class="form-label">单件成本底价 (元)：</label>
+                <input type="number" class="form-input" id="singleUnitCost" value="0.94" step="0.01">
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">预计拼单售价 (元)：</label>
+                <input type="number" class="form-input" id="singleSellingPrice" value="13.90" step="0.1">
+              </div>
+              <div class="form-group">
+                <label class="form-label">立减优惠券面额 (元)：</label>
+                <input type="number" class="form-input" id="singleCoupon" value="2.00" step="0.5">
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">限时折扣率 (如0.7表示7折)：</label>
+                <input type="number" class="form-input" id="singleDiscountRate" value="0.70" step="0.05" min="0.1" max="1.0">
+              </div>
+              <div class="form-group">
+                <label class="form-label">实际全站设定 ROAS (选填)：</label>
+                <input type="number" class="form-input" id="singleActualRoas" placeholder="默认使用保本/净ROAS" step="0.1">
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="padding: 10px; justify-content: center; font-size: 14px;" onclick="runSinglePricingCalc()">
+              🧮 立即精准测算
+            </button>
+          </div>
+        </div>
+
+        <!-- 单品算价测算结果展示 -->
+        <div class="card col-7" id="singlePricingOutputCard">
+          <div class="card-header">
+            <div class="card-title">📊 测算结果与投产倒推路线</div>
+            <span class="badge badge-success" id="singleResultBadge">保本投产比就绪</span>
+          </div>
+
+          <div class="metric-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 16px;">
+            <div class="metric-card">
+              <div class="metric-title">每单扣成本毛利 (含退款)</div>
+              <div class="metric-value" id="calcOutProfit" style="font-size: 20px; color: #34d399;">¥0.00</div>
+              <div class="metric-sub">毛利率: <span id="calcOutMarginRate">0%</span></div>
+            </div>
+
+            <div class="metric-card pdd">
+              <div class="metric-title">设定 ROAS 广告花费</div>
+              <div class="metric-value" id="calcOutAdSpend" style="font-size: 20px; color: #f87171;">¥0.00</div>
+              <div class="metric-sub">出价占比: <span id="calcOutAdRatio">0%</span></div>
+            </div>
+
+            <div class="metric-card success">
+              <div class="metric-title">广告后每单净利润</div>
+              <div class="metric-value" id="calcOutNetProfit" style="font-size: 20px; color: #38bdf8;">¥0.00</div>
+              <div class="metric-sub">纯净利润率: <span id="calcOutNetMarginRate">0%</span></div>
+            </div>
+
+            <div class="metric-card warning">
+              <div class="metric-title">🛡️ 真实保本 ROI (含退款损耗)</div>
+              <div class="metric-value" id="calcOutBreakevenRoas" style="font-size: 22px; color: #fbbf24;">1.785</div>
+              <div class="metric-sub">无退款理论极限值: <span id="calcOutRawBreakevenRoas">1.41</span></div>
+            </div>
+          </div>
+
+          <!-- 拼多多高阶营销打法与 14 天拖价路线 -->
+          <div style="background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">
+              <span style="color: #94a3b8;">拼多多 5+7 折限时折扣虚高价:</span>
+              <strong style="color: #f87171;" id="calcOutInflatedPrice">¥0.00</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">
+              <span style="color: #94a3b8;">反算卷后前端到手价:</span>
+              <strong style="color: #34d399;" id="calcOutReflowPrice">¥0.00</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">
+              <span style="color: #94a3b8;">营销页面划线总优惠 (虚高价 - 到手价):</span>
+              <strong style="color: #e11d48;" id="calcOutTotalDiscount">¥0.00</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">
+              <span style="color: #94a3b8;">售后/起量期投产比 (ROAS / 0.8):</span>
+              <strong style="color: #fbbf24;" id="calcOutRoasService">0.00</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #94a3b8;">后期权重上升最佳目标 ROAS (1.3x):</span>
+              <strong style="color: #a855f7;" id="calcOutOptimalRoas">0.00</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 批量 SKU 组合矩阵算价与日度/月度利润模拟 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-title-icon">📦</div>
+            <span>全店多 SKU 矩阵算价与日度/月度利润模拟看板</span>
+          </div>
+          <button class="btn btn-outline" style="font-size: 12px;" onclick="addBatchSkuRow()">➕ 添加 SKU 算价行</button>
+        </div>
+
+        <div class="table-responsive">
+          <table id="batchPricingTable">
+            <thead>
+              <tr>
+                <th>SKU名称</th>
+                <th>包含件数</th>
+                <th>单件成本(元)</th>
+                <th>拼单售价(元)</th>
+                <th>立减券(元)</th>
+                <th>折率</th>
+                <th>5+7虚高原价(元)</th>
+                <th>券后到手价(元)</th>
+                <th>划线总优惠(元)</th>
+                <th>目标日单量</th>
+                <th>每单毛利(元)</th>
+                <th>无退款理论ROI</th>
+                <th>真实保本ROI(含退款)</th>
+                <th>每单广告费(元)</th>
+                <th>广告后纯利润(元)</th>
+                <th>日预估净利润(元)</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="batchPricingTbody">
+              <!-- 动态填充 -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 汇总区域 -->
+        <div style="margin-top: 20px; padding: 16px 20px; background: linear-gradient(135deg, #090d16 0%, #162032 100%); border-radius: 12px; border: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 13px; color: #94a3b8;">组合预估总日单量: <strong style="color: #fff;" id="sumDailyOrders">0</strong> 单 | 组合综合投产比 (ROAS): <strong style="color: #fbbf24;" id="sumOverallRoas">0.00</strong></div>
+            <div style="font-size: 14px; color: #cbd5e1; margin-top: 4px;">预估日成交额: <strong style="color: #38bdf8;" id="sumDailyRev">¥0.00</strong> | 预估日广告花费: <strong style="color: #f87171;" id="sumDailyAd">¥0.00</strong></div>
+          </div>
+
+          <div style="text-align: right;">
+            <div style="font-size: 12px; color: #94a3b8;">预估日净利润</div>
+            <div style="font-size: 26px; font-weight: 800; color: #34d399;" id="sumDailyNetProfit">¥0.00</div>
+            <div style="font-size: 11px; color: #64748b;">预估月净利润 (30天): <span style="color: #a855f7; font-weight: bold;" id="sumMonthlyNetProfit">¥0.00</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ==================== TAB 3: 全域四平台看板 (天猫/京东/抖音/拼多多) ==================== -->
+    <div id="omniSection" style="display: none; flex-direction: column; gap: 24px;">
+
+      <!-- 全网大盘总量 -->
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-title">全网净成交额 (Net GMV)</div>
+          <div class="metric-value" id="totalNetGmv">¥0.00</div>
+          <div class="metric-sub">
+            <span>总毛销售: <span id="totalGmv">¥0</span></span>
+            <span style="color: var(--danger)" id="overallRefundRate">退款率 0%</span>
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">全域总访客数 (UV)</div>
+          <div class="metric-value" id="totalVisitors">0</div>
+          <div class="metric-sub">
+            <span>总成交订单: <span id="totalOrders">0</span></span>
+            <span style="color: var(--success)" id="overallCvr">转化率 0%</span>
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">商业化总投放花费</div>
+          <div class="metric-value" id="totalAdSpend">¥0.00</div>
+          <div class="metric-sub">
+            <span>综合投产比 (ROAS):</span>
+            <span style="color: #60a5fa; font-weight: bold;" id="overallRoas">0.00</span>
+          </div>
+        </div>
+        <div class="metric-card pdd">
+          <div class="metric-title">拼多多净成交 (新接入)</div>
+          <div class="metric-value" id="pddNetGmv">¥0.00</div>
+          <div class="metric-sub">
+            <span id="pddAov">客单价: ¥0.00</span>
+            <span style="color: var(--success)" id="pddCvr">CVR: 0%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 四平台数据图表区域 -->
+      <div class="charts-grid">
+        <div class="card col-6">
+          <div class="card-header">
+            <div class="card-title">📊 四平台销售份额与营销投入占比</div>
+          </div>
+          <div id="chartGmvShare" class="chart-box"></div>
+        </div>
+
+        <div class="card col-6">
+          <div class="card-header">
+            <div class="card-title">⚡ 四平台关键效率对比 (CVR vs 退款率 vs ROAS)</div>
+          </div>
+          <div id="chartEfficiency" class="chart-box"></div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="card col-6">
+          <div class="card-header">
+            <div class="card-title">🌪️ 全链路转化漏斗对比</div>
+          </div>
+          <div id="chartFunnel" class="chart-box"></div>
+        </div>
+
+        <div class="card col-6">
+          <div class="card-header">
+            <div class="card-title">🎯 波士顿矩阵 (贡献销售 vs 边际利润率)</div>
+          </div>
+          <div id="chartScatter" class="chart-box"></div>
+        </div>
+      </div>
+
+      <!-- 全域 SKU 明细表格 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📦 全域单品 (SKU) 经营表现与货盘角色明细</div>
+          <select id="channelSelect" onchange="filterSkuTable()" class="form-select" style="padding: 4px 10px; font-size: 12px;">
+            <option value="全部">全部平台</option>
+            <option value="天猫">天猫</option>
+            <option value="京东">京东</option>
+            <option value="抖音">抖音</option>
+            <option value="拼多多">拼多多</option>
+          </select>
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>渠道</th>
+                <th>SKU编码</th>
+                <th>商品名称</th>
+                <th>价格带</th>
+                <th>访客UV</th>
+                <th>净销售额</th>
+                <th>转化率</th>
+                <th>退款率</th>
+                <th>ROAS</th>
+                <th>边际贡献率</th>
+                <th>货盘定位</th>
+              </tr>
+            </thead>
+            <tbody id="skuTableBody">
+              <!-- 动态填充 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    let chartGmvShare = null;
+    let chartEfficiency = null;
+    let chartFunnel = null;
+    let chartScatter = null;
+    let allSkusData = [];
+    let currentPddAnalysis = null;
+
+    // 页面载入初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      initCharts();
+      fetchDashboardData();
+    });
+
+    window.addEventListener('resize', () => {
+      chartGmvShare && chartGmvShare.resize();
+      chartEfficiency && chartEfficiency.resize();
+      chartFunnel && chartFunnel.resize();
+      chartScatter && chartScatter.resize();
+    });
+
+    // Toast 提示
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.innerText = (type === 'success' ? '✅ ' : '❌ ') + msg;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    // 填入示例链接
+    function fillSampleUrl(goodsId) {
+      document.getElementById('pddBenchmarkInput').value = `https://mobile.yangkeduo.com/goods.php?goods_id=${goodsId}`;
+      showToast(`已填入对标商品 ID: ${goodsId}`);
+    }
+
+    // Tab 切换逻辑
+    function switchMainTab(tab) {
+      const pddSec = document.getElementById('pddSection');
+      const pricingSec = document.getElementById('pricingSection');
+      const omniSec = document.getElementById('omniSection');
+
+      const pddBtn = document.getElementById('tabBtnPdd');
+      const pricingBtn = document.getElementById('tabBtnPricing');
+      const omniBtn = document.getElementById('tabBtnOmni');
+
+      pddSec.style.display = 'none';
+      pricingSec.style.display = 'none';
+      omniSec.style.display = 'none';
+
+      pddBtn.classList.remove('active');
+      pricingBtn.classList.remove('active');
+      omniBtn.classList.remove('active');
+
+      if (tab === 'pdd') {
+        pddSec.style.display = 'flex';
+        pddBtn.classList.add('active');
+      } else if (tab === 'pricing') {
+        pricingSec.style.display = 'flex';
+        pricingBtn.classList.add('active');
+        initDefaultBatchTable();
+        runSinglePricingCalc();
+      } else {
+        omniSec.style.display = 'flex';
+        omniBtn.classList.add('active');
+        window.dispatchEvent(new Event('resize'));
+      }
+    }
+
+    // 算价表相关 JS
+    let batchSkusList = [
+      { sku_name: '买一送一 (两把装)', sku_qty: 2, unit_cost: 0.94, selling_price: 21.0, coupon_amount: 3.0, discount_rate: 0.7, daily_orders: 210 },
+      { sku_name: '3把装 (高客单)', sku_qty: 3, unit_cost: 0.94, selling_price: 27.0, coupon_amount: 4.0, discount_rate: 0.7, daily_orders: 13 },
+      { sku_name: '2把装 (活动款)', sku_qty: 2, unit_cost: 0.94, selling_price: 13.9, coupon_amount: 2.0, discount_rate: 0.7, daily_orders: 48 },
+      { sku_name: '1把装 (引流福利)', sku_qty: 1, unit_cost: 0.94, selling_price: 8.9, coupon_amount: 1.0, discount_rate: 0.7, daily_orders: 162 }
+    ];
+
+    function initDefaultBatchTable() {
+      renderBatchPricingTable();
+    }
+
+    async function runSinglePricingCalc() {
+      const globalRoasVal = document.getElementById('calcTargetRoas').value;
+      const globalRoas = globalRoasVal !== '' ? parseFloat(globalRoasVal) : null;
+
+      const singleRoasVal = document.getElementById('singleActualRoas').value;
+      const singleRoas = singleRoasVal !== '' ? parseFloat(singleRoasVal) : null;
+      
+      const commVal = document.getElementById('calcCommissionRate').value;
+      const commissionRate = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
+
+      const payload = {
+        sku_name: document.getElementById('singleSkuName').value || '默认规格',
+        sku_qty: parseInt(document.getElementById('singleSkuQty').value) || 1,
+        unit_cost: parseFloat(document.getElementById('singleUnitCost').value) || 0,
+        selling_price: parseFloat(document.getElementById('singleSellingPrice').value) || 0,
+        express_fee: parseFloat(document.getElementById('calcExpressFee').value) || 0,
+        material_fee: parseFloat(document.getElementById('calcMaterialFee').value) || 0,
+        labor_fee: parseFloat(document.getElementById('calcLaborFee').value) || 0,
+        refund_rate: (parseFloat(document.getElementById('calcRefundRate').value) || 0) / 100,
+        insurance_fee: parseFloat(document.getElementById('calcInsuranceFee').value) || 0,
+        platform_commission_rate: commissionRate,
+        coupon_amount: parseFloat(document.getElementById('singleCoupon').value) || 0,
+        discount_rate: parseFloat(document.getElementById('singleDiscountRate').value) || 0.7,
+        actual_roas: singleRoas || globalRoas
+      };
+
+      try {
+        const res = await fetch('/api/pricing/calculate-single', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          const d = data.data;
+          // 格式化价格，支持展现精准的 3 位小数 (如 7.785)
+          const formatPrice = (num) => {
+            const str = num.toFixed(3);
+            return str.endsWith('0') ? num.toFixed(2) : str;
+          };
+
+          document.getElementById('calcOutProfit').innerText = '¥' + formatPrice(d.profit_after_refund);
+          document.getElementById('calcOutMarginRate').innerText = (d.margin_rate * 100).toFixed(1) + '%';
+          
+          document.getElementById('calcOutAdSpend').innerText = '¥' + formatPrice(d.ad_cost_per_order);
+          const adRatio = d.selling_price > 0 ? (d.ad_cost_per_order / d.selling_price * 100).toFixed(1) : 0;
+          document.getElementById('calcOutAdRatio').innerText = adRatio + '%';
+
+          document.getElementById('calcOutNetProfit').innerText = '¥' + formatPrice(d.profit_after_ad);
+          document.getElementById('calcOutNetProfit').style.color = d.profit_after_ad >= 0 ? '#34d399' : '#f87171';
+          document.getElementById('calcOutNetMarginRate').innerText = (d.net_margin_rate * 100).toFixed(1) + '%';
+
+          document.getElementById('calcOutBreakevenRoas').innerText = formatPrice(d.breakeven_roas);
+          document.getElementById('calcOutRawBreakevenRoas').innerText = formatPrice(d.raw_breakeven_roas);
+
+          document.getElementById('calcOutInflatedPrice').innerText = '¥' + formatPrice(d.inflated_original_price);
+          document.getElementById('calcOutReflowPrice').innerText = '¥' + formatPrice(d.reflow_price);
+          document.getElementById('calcOutTotalDiscount').innerText = '¥' + formatPrice(d.total_discount_display);
+          document.getElementById('calcOutRoasService').innerText = d.roas_after_service.toFixed(2);
+          document.getElementById('calcOutOptimalRoas').innerText = d.optimal_roas.toFixed(2);
+        }
+      } catch (err) {
+        console.error("单品算价失败:", err);
+      }
+    }
+
+    function onGlobalPricingParamChange() {
+      runSinglePricingCalc();
+      renderBatchPricingTable();
+    }
+
+    async function renderBatchPricingTable() {
+      const expressVal = document.getElementById('calcExpressFee').value;
+      const express = expressVal !== '' ? parseFloat(expressVal) : 1.8;
+
+      const matVal = document.getElementById('calcMaterialFee').value;
+      const material = matVal !== '' ? parseFloat(matVal) : 0.1;
+
+      const laborVal = document.getElementById('calcLaborFee').value;
+      const labor = laborVal !== '' ? parseFloat(laborVal) : 0.25;
+
+      const refundVal = document.getElementById('calcRefundRate').value;
+      const refund = (refundVal !== '' ? parseFloat(refundVal) : 15) / 100;
+
+      const insVal = document.getElementById('calcInsuranceFee').value;
+      const insurance = insVal !== '' ? parseFloat(insVal) : 0.0;
+
+      const commVal = document.getElementById('calcCommissionRate').value;
+      const commissionRate = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
+
+      const roasVal = document.getElementById('calcTargetRoas').value;
+      const targetRoas = roasVal !== '' ? parseFloat(roasVal) : null;
+
+      try {
+        const res = await fetch('/api/pricing/calculate-batch', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            skus: batchSkusList,
+            common_express: express,
+            common_material: material,
+            common_labor: labor,
+            common_refund_rate: refund,
+            common_insurance: insurance,
+            common_commission_rate: commissionRate,
+            target_roas: targetRoas
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          const skus = data.data.skus;
+          const summary = data.data.summary;
+          const tbody = document.getElementById('batchPricingTbody');
+          tbody.innerHTML = '';
+
+          const formatPrice = (num) => {
+            const str = num.toFixed(3);
+            return str.endsWith('0') ? num.toFixed(2) : str;
+          };
+
+          skus.forEach((s, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:130px;" value="${s.sku_name}" onchange="updateBatchSku(${idx}, 'sku_name', this.value)"></td>
+              <td><input type="number" class="form-input" style="padding:4px 8px; font-size:12px; width:55px;" value="${s.sku_qty}" onchange="updateBatchSku(${idx}, 'sku_qty', parseInt(this.value))"></td>
+              <td><input type="number" class="form-input" style="padding:4px 8px; font-size:12px; width:65px;" value="${s.unit_cost}" step="0.1" onchange="updateBatchSku(${idx}, 'unit_cost', parseFloat(this.value))"></td>
+              <td><input type="number" class="form-input" style="padding:4px 8px; font-size:12px; width:70px;" value="${s.selling_price}" step="0.1" onchange="updateBatchSku(${idx}, 'selling_price', parseFloat(this.value))"></td>
+              <td><input type="number" class="form-input" style="padding:4px 8px; font-size:12px; width:60px;" value="${s.coupon_amount}" step="0.5" onchange="updateBatchSku(${idx}, 'coupon_amount', parseFloat(this.value))"></td>
+              <td><input type="number" class="form-input" style="padding:4px 8px; font-size:12px; width:55px;" value="${s.discount_rate}" step="0.05" onchange="updateBatchSku(${idx}, 'discount_rate', parseFloat(this.value))"></td>
+              <td style="color:#f87171; font-weight:bold;">¥${formatPrice(s.inflated_original_price)}</td>
+              <td style="color:#34d399; font-weight:bold;">¥${formatPrice(s.reflow_price)}</td>
+              <td style="color:#e11d48; font-weight:bold;">¥${formatPrice(s.total_discount_display)}</td>
+              <td><input type="number" class="form-input" style="padding:4px 8px; font-size:12px; width:65px;" value="${s.daily_orders}" onchange="updateBatchSku(${idx}, 'daily_orders', parseInt(this.value))"></td>
+              <td style="color:#34d399; font-weight:bold;">¥${formatPrice(s.profit_after_refund)}</td>
+              <td style="color:#94a3b8;">${formatPrice(s.raw_breakeven_roas)}</td>
+              <td style="color:#fbbf24; font-weight:bold;">${formatPrice(s.breakeven_roas)}</td>
+              <td>¥${formatPrice(s.ad_cost_per_order)}</td>
+              <td style="color:${s.profit_after_ad >= 0 ? '#34d399' : '#f87171'}; font-weight:bold;">¥${formatPrice(s.profit_after_ad)}</td>
+              <td style="color:#34d399; font-weight:bold;">¥${formatPrice(s.daily_net_profit)}</td>
+              <td><button class="btn btn-outline" style="padding:2px 6px; font-size:11px; color:#ef4444; border-color:#ef4444;" onclick="removeBatchSku(${idx})">删除</button></td>
+            `;
+            tbody.appendChild(tr);
+          });
+
+          document.getElementById('sumDailyOrders').innerText = summary.total_daily_orders;
+          document.getElementById('sumOverallRoas').innerText = summary.overall_roas.toFixed(2);
+          document.getElementById('sumDailyRev').innerText = '¥' + summary.total_daily_revenue.toLocaleString('zh-CN', {minimumFractionDigits:2});
+          document.getElementById('sumDailyAd').innerText = '¥' + summary.total_daily_ad_spend.toLocaleString('zh-CN', {minimumFractionDigits:2});
+          document.getElementById('sumDailyNetProfit').innerText = '¥' + summary.total_daily_net_profit.toLocaleString('zh-CN', {minimumFractionDigits:2});
+          document.getElementById('sumMonthlyNetProfit').innerText = '¥' + summary.monthly_net_profit_est.toLocaleString('zh-CN', {minimumFractionDigits:2});
+        }
+      } catch (err) {
+        console.error("批量算价失败:", err);
+      }
+    }
+
+    function updateBatchSku(idx, field, value) {
+      if (batchSkusList[idx]) {
+        batchSkusList[idx][field] = value;
+        renderBatchPricingTable();
+      }
+    }
+
+    function addBatchSkuRow() {
+      batchSkusList.push({ sku_name: '新规格套餐', sku_qty: 1, unit_cost: 1.0, selling_price: 9.9, coupon_amount: 2.0, discount_rate: 0.7, daily_orders: 50 });
+      renderBatchPricingTable();
+    }
+
+    function removeBatchSku(idx) {
+      batchSkusList.splice(idx, 1);
+      renderBatchPricingTable();
+    }
+
+    function loadPresetPricing(mode) {
+      document.getElementById('singleSkuName').value = "买一送一 (爆款组合)";
+      document.getElementById('singleSkuQty').value = 2;
+      document.getElementById('singleUnitCost').value = 0.94;
+      document.getElementById('singleSellingPrice').value = 21.0;
+      document.getElementById('singleCoupon').value = 2.0;
+      runSinglePricingCalc();
+      showToast("已载入微付费算价模板数据！");
+    }
+
+    function initCharts() {
+      chartGmvShare = echarts.init(document.getElementById('chartGmvShare'), 'dark');
+      chartEfficiency = echarts.init(document.getElementById('chartEfficiency'), 'dark');
+      chartFunnel = echarts.init(document.getElementById('chartFunnel'), 'dark');
+      chartScatter = echarts.init(document.getElementById('chartScatter'), 'dark');
+    }
+
+    async function fetchDashboardData() {
+      try {
+        const [sumRes, funnelRes, skuRes] = await Promise.all([
+          fetch('/api/dashboard/summary').then(r => r.json()),
+          fetch('/api/dashboard/funnels').then(r => r.json()),
+          fetch('/api/dashboard/skus').then(r => r.json())
+        ]);
+
+        if (sumRes.success) {
+          renderOverview(sumRes.overall, sumRes.channel_summaries);
+          renderGmvShareChart(sumRes.channel_summaries);
+          renderEfficiencyChart(sumRes.channel_summaries);
+        }
+        if (funnelRes.success) renderFunnelChart(funnelRes.funnels);
+        if (skuRes.success) {
+          allSkusData = skuRes.skus;
+          renderScatterChart(allSkusData);
+          renderSkuTable(allSkusData);
+        }
+      } catch (err) {
+        console.error("数据加载失败:", err);
+      }
+    }
+
+    function renderOverview(overall, channels) {
+      document.getElementById('totalNetGmv').innerText = '¥' + Number(overall.total_net_gmv || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2});
+      document.getElementById('totalGmv').innerText = '¥' + Number(overall.total_gmv || 0).toLocaleString('zh-CN', {maximumFractionDigits: 0});
+      document.getElementById('overallRefundRate').innerText = '退款率 ' + (Number(overall.overall_refund_rate || 0) * 100).toFixed(1) + '%';
+      
+      document.getElementById('totalVisitors').innerText = Number(overall.total_visitors || 0).toLocaleString();
+      document.getElementById('totalOrders').innerText = Number(overall.total_orders || 0).toLocaleString();
+      document.getElementById('overallCvr').innerText = '转化率 ' + (Number(overall.overall_cvr || 0) * 100).toFixed(2) + '%';
+
+      document.getElementById('totalAdSpend').innerText = '¥' + Number(overall.total_ad_spend || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2});
+      document.getElementById('overallRoas').innerText = Number(overall.overall_roas || 0).toFixed(2);
+
+      const pdd = channels.find(c => c.channel === '拼多多');
+      if (pdd) {
+        document.getElementById('pddNetGmv').innerText = '¥' + Number(pdd.net_gmv || 0).toLocaleString('zh-CN', {maximumFractionDigits: 0});
+        document.getElementById('pddAov').innerText = '客单价: ¥' + Number(pdd.aov || 0).toFixed(1);
+        document.getElementById('pddCvr').innerText = 'CVR: ' + (Number(pdd.cvr || 0) * 100).toFixed(2) + '%';
+      }
+    }
+
+    // 核心异步触发：拼多多对标分析与合规计算
+    async function runPddBenchmarkAnalysis(btnElem) {
+      const urlInput = document.getElementById('pddBenchmarkInput');
+      const urlText = urlInput ? urlInput.value.trim() : '';
+      const baseCost = parseFloat(document.getElementById('pddCostInput').value) || 4.5;
+      const mode = document.getElementById('pddModeSelect').value;
+      const apiKey = document.getElementById('deepseekApiKey').value.trim() || undefined;
+
+      if (!urlText) {
+        showToast("请输入对标链接、分享口令或商品 ID！", "error");
+        return;
+      }
+
+      // 启动全屏进度 Overlay 动画
+      const overlay = document.getElementById('progressOverlay');
+      overlay.style.display = 'flex';
+
+      try {
+        const res = await fetch('/api/pdd/analyze-benchmark', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url_or_text: urlText,
+            base_cost: baseCost,
+            strategy_mode: mode,
+            deepseek_api_key: apiKey
+          })
+        });
+
+        const respData = await res.json();
+
+        // 延迟 600ms 模拟动画流畅度
+        await new Promise(r => setTimeout(r, 600));
+
+        if (respData.success) {
+          currentPddAnalysis = respData.data;
+          renderPddAnalysis(respData.data);
+          
+          const resultContainer = document.getElementById('pddAnalysisResult');
+          if (resultContainer) {
+            resultContainer.style.display = 'flex';
+            resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+
+          showToast("🎉 拼多多爆款拆解与黄金定价计算成功！");
+        } else {
+          showToast("分析失败: " + (respData.message || "未知错误"), "error");
+        }
+      } catch (err) {
+        console.error("拆解请求出错:", err);
+        showToast("请求失败: " + err.message, "error");
+      } finally {
+        overlay.style.display = 'none';
+      }
+    }
+
+    function renderPddAnalysis(data) {
+      // 1. 合规卡片
+      const comp = data.compliance_audit;
+      const compStatusElem = document.getElementById('complianceStatus');
+      if (comp.is_compliant) {
+        compStatusElem.innerText = "检测通过 (合规率 100%)";
+        compStatusElem.style.color = "#34d399";
+        document.getElementById('complianceDetails').innerText = "无违禁极限词，无知名品牌侵权词";
+      } else {
+        compStatusElem.innerText = "存在违规风险需修正";
+        compStatusElem.style.color = "#f87171";
+        document.getElementById('complianceDetails').innerText = "违禁词: " + comp.forbidden_words_detected.join(', ');
+      }
+
+      const ratio = comp.sku_price_ratio_check;
+      const ratioElem = document.getElementById('priceRatioStatus');
+      ratioElem.innerText = `倍率 ${ratio.ratio}x (${ratio.status === 'safe' ? '安全' : '高低价风险'})`;
+      ratioElem.style.color = ratio.status === 'safe' ? "#60a5fa" : "#f87171";
+
+      // 2. ROI
+      const skuMatrix = data.golden_sku_matrix || {};
+      const breakEvenRoi = Number(skuMatrix.break_even_roi || 0);
+      document.getElementById('targetRoiStatus').innerText = `保本 ROI ${breakEvenRoi.toFixed(2)}`;
+      document.getElementById('roiStrategyBrief').innerText = skuMatrix.ad_strategy ? skuMatrix.ad_strategy.budget_plan : '';
+
+      // 3. SKU 表格
+      const skuTbody = document.getElementById('pddSkuTableBody');
+      skuTbody.innerHTML = '';
+      (skuMatrix.skus || []).forEach(s => {
+        const tr = document.createElement('tr');
+        const costVal = Number(s.cost || 0);
+        const sellVal = Number(s.price || s.selling_price || 0);
+        const marginVal = Number(s.margin !== undefined ? s.margin : (s.margin_amount !== undefined ? s.margin_amount : 0));
+        const marginRate = Number(s.margin_rate !== undefined ? s.margin_rate : 0);
+        const level = s.level || (s.role ? s.role.split(' ')[0] : '规格');
+        const specTag = s.spec_tag || s.sku_name || '';
+        const purpose = s.purpose || s.role || '';
+
+        tr.innerHTML = `
+          <td><span class="badge ${level.includes('引流') ? 'badge-info' : level.includes('主推') ? 'badge-success' : 'badge-warning'}">${level}</span></td>
+          <td><strong>${s.sku_name || ''}</strong></td>
+          <td><span style="color:#93c5fd;">${specTag}</span></td>
+          <td>¥${costVal.toFixed(2)}</td>
+          <td style="color:#34d399; font-weight:bold; font-size:14px;">¥${sellVal.toFixed(2)}</td>
+          <td>¥${marginVal.toFixed(2)}</td>
+          <td>${(marginRate * 100).toFixed(1)}%</td>
+          <td style="font-size:12px; color:#cbd5e1;">${purpose}</td>
+        `;
+        skuTbody.appendChild(tr);
+      });
+
+      // 4. 标题方案
+      const titlesCont = document.getElementById('titlePlansContainer');
+      titlesCont.innerHTML = '';
+      (data.title_plans || []).forEach(tp => {
+        const div = document.createElement('div');
+        div.style.background = '#090d16';
+        div.style.border = '1px solid #1e293b';
+        div.style.padding = '12px 16px';
+        div.style.borderRadius = '10px';
+        div.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-weight:bold; color:#38bdf8; font-size:13px;">${tp.type || '方案'}</span>
+            <button class="btn btn-outline" style="font-size:11px; padding:3px 8px;" onclick="copyText('${(tp.title || '').replace(/'/g, "\\'")}')">复制标题</button>
+          </div>
+          <div style="font-size:13px; color:#f1f5f9; word-break:break-all;">${tp.title || ''}</div>
+          <div style="font-size:11px; color:#94a3b8; margin-top:6px;">💡 核心优势: ${tp.features || ''}</div>
+        `;
+        titlesCont.appendChild(div);
+      });
+
+      // 5. 活动提报
+      const actCont = document.getElementById('activityAdviceContainer');
+      const actPlan = data.activity_plan || {};
+      const forbiddenRules = actPlan.forbidden_rules || ["切勿勾选【自动降价】协议"];
+      const recActivities = actPlan.recommended_activities || [{}, {}];
+      const zeroRisk = actPlan.zero_risk_service || ["退货包运费", "体验装", "送运费险"];
+      actCont.innerHTML = `
+        <div style="margin-bottom:10px;"><strong style="color:#f87171;">⚠️ 避坑原则：</strong>${forbiddenRules[0] || ''}</div>
+        <div style="margin-bottom:10px;"><strong style="color:#fbbf24;">🛡️ 体验装保护：</strong>${recActivities[0]?.mechanism || ''}</div>
+        <div style="margin-bottom:10px;"><strong style="color:#34d399;">🏷️ 高权活动标：</strong>${recActivities[1]?.mechanism || ''}</div>
+        <div style="background:#172554; padding:10px; border-radius:8px; font-size:12px; color:#93c5fd; border:1px solid #1e40af;">
+          <strong>起爆破零口诀：</strong>${zeroRisk.join(' + ')}，配合限时满减倒计时券强行撬动曝光！
+        </div>
+      `;
+
+      // 6. AI 视觉 Prompt
+      const vCont = document.getElementById('visualPromptsContainer');
+      vCont.innerHTML = `
+        <div style="background:#090d16; padding:12px; border-radius:8px; border-left:3px solid #6366f1;">
+          <div style="color:#818cf8; font-weight:bold; margin-bottom:4px;">主图3秒法则执行规范：</div>
+          <div style="color:#cbd5e1;">${data.visual_prompts.main_image_guideline}</div>
+        </div>
+        <div style="background:#090d16; padding:12px; border-radius:8px; border-left:3px solid #38bdf8;">
+          <div style="color:#38bdf8; font-weight:bold; margin-bottom:4px;">AI生图提示词 (中文)：</div>
+          <div style="color:#f1f5f9;">${data.visual_prompts.ai_generation_prompts.midjourney_prompt_zh}</div>
+        </div>
+        <div style="background:#090d16; padding:12px; border-radius:8px; border-left:3px solid #a855f7;">
+          <div style="color:#c084fc; font-weight:bold; margin-bottom:4px;">Midjourney / Seedream 英文提示词：</div>
+          <div style="color:#94a3b8; font-family:monospace;">${data.visual_prompts.ai_generation_prompts.midjourney_prompt_en}</div>
+        </div>
+      `;
+
+      // 7. 小碎步拖价全景
+      const roiCont = document.getElementById('roiStepContainer');
+      const roadmap = skuMatrix.ad_strategy.roi_roadmap;
+      roiCont.innerHTML = `
+        <div style="margin-bottom:10px;"><strong style="color:#f87171;">【阶段1：第1-3天 强吃曝光破零】</strong><br/>${roadmap["第1-3天_强吃曝光破零"]}</div>
+        <div style="margin-bottom:10px;"><strong style="color:#fbbf24;">【阶段2：第4-7天 稳出单累评】</strong><br/>${roadmap["第4-7天_稳出单累评"]}</div>
+        <div><strong style="color:#34d399;">【阶段3：第8-14天 拖价撬动自然流】</strong><br/>${roadmap["第8-14天_拖价撬动自然流"]}</div>
+      `;
+    }
+
+    function copyText(txt) {
+      navigator.clipboard.writeText(txt).then(() => {
+        showToast("已成功复制到剪贴板！");
+      }).catch(() => {
+        prompt("请手动复制：", txt);
+      });
+    }
+
+    function copyAllPrompts() {
+      if (!currentPddAnalysis) return;
+      const p = currentPddAnalysis.visual_prompts.ai_generation_prompts;
+      copyText(`中文提示词：\n${p.midjourney_prompt_zh}\n\n英文Prompt：\n${p.midjourney_prompt_en}`);
+    }
+
+    async function downloadPddImportFile(format = 'csv') {
+      if (!currentPddAnalysis) {
+        showToast("请先完成对标拆解与智能定价！", "error");
+        return;
+      }
+      try {
+        const res = await fetch('/api/pdd/export-import-file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentPddAnalysis)
+        });
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `pdd_batch_goods_${currentPddAnalysis.raw_benchmark_info.goods_id}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        showToast("拼多多批量铺货文件导出成功！");
+      } catch (err) {
+        showToast("导出失败: " + err.message, "error");
+      }
+    }
+
+    function copyPddOpenApiParams() {
+      if (!currentPddAnalysis) return;
+      copyText(JSON.stringify(currentPddAnalysis.pdd_open_api_schema, null, 2));
+    }
+
+    function downloadSopDoc() {
+      window.open('/static/拼多多高阶运营与新链接无基础销量起爆_SOP全景指南.md', '_blank');
+    }
+
+    function downloadTemplate() {
+      window.location.href = '/api/data/download-template';
+    }
+
+    // 图表绘制函数略微保持兼容
+    function renderGmvShareChart(channels) {
+      const gmvData = channels.map(c => ({ name: c.channel, value: Math.round(c.net_gmv) }));
+      const adData = channels.map(c => ({ name: c.channel, value: Math.round(c.ad_spend) }));
+
+      chartGmvShare.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: ¥{c} ({d}%)' },
+        legend: { bottom: '0', textStyle: { color: '#94a3b8' } },
+        color: ['#ff4d6d', '#ff6b6b', '#00f2fe', '#e02e24'],
+        series: [
+          { name: '净销售额', type: 'pie', radius: [0, '38%'], center: ['50%', '45%'], data: gmvData },
+          { name: '广告花费', type: 'pie', radius: ['48%', '68%'], center: ['50%', '45%'], data: adData }
+        ]
+      });
+    }
+
+    function renderEfficiencyChart(channels) {
+      const names = channels.map(c => c.channel);
+      const cvr = channels.map(c => (c.cvr * 100).toFixed(2));
+      const refund = channels.map(c => (c.refund_rate * 100).toFixed(2));
+      const roas = channels.map(c => c.roas.toFixed(2));
+
+      chartEfficiency.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { top: '0', textStyle: { color: '#94a3b8' } },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+        xAxis: { type: 'category', data: names, axisLine: { lineStyle: { color: '#334155' } } },
+        yAxis: [
+          { type: 'value', name: '比率 (%)', axisLabel: { formatter: '{value}%' }, splitLine: { lineStyle: { color: '#1e293b' } } },
+          { type: 'value', name: 'ROAS', axisLabel: { formatter: '{value}' }, splitLine: { show: false } }
+        ],
+        series: [
+          { name: '转化率 CVR', type: 'bar', data: cvr, itemStyle: { color: '#10b981' } },
+          { name: '退款率', type: 'bar', data: refund, itemStyle: { color: '#ef4444' } },
+          { name: 'ROAS', type: 'line', yAxisIndex: 1, data: roas, itemStyle: { color: '#f59e0b' }, symbolSize: 8 }
+        ]
+      });
+    }
+
+    function renderFunnelChart(funnels) {
+      const channels = Object.keys(funnels);
+      const seriesList = [];
+      channels.forEach((ch, idx) => {
+        const f = funnels[ch];
+        seriesList.push({
+          name: ch,
+          type: 'funnel',
+          left: `${idx * 24 + 4}%`,
+          width: '20%',
+          top: 40, bottom: 20,
+          data: [
+            { value: Math.round(f['曝光PV'] / 1000), name: '曝光(千)' },
+            { value: Math.round(f['访客UV'] / 100), name: '访客(百)' },
+            { value: Math.round(f['加购收藏UV'] / 10), name: '加购(十)' },
+            { value: f['支付买家UV'], name: '买家UV' }
+          ]
+        });
+      });
+      chartFunnel.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'item' },
+        legend: { top: 0, textStyle: { color: '#94a3b8' } },
+        series: seriesList
+      });
+    }
+
+    function renderScatterChart(skus) {
+      const seriesMap = { '天猫': [], '京东': [], '抖音': [], '拼多多': [] };
+      skus.forEach(s => {
+        if (!seriesMap[s.channel]) seriesMap[s.channel] = [];
+        seriesMap[s.channel].push([s.net_gmv, (s.contribution_margin * 100).toFixed(1), s.sku_name, s.portfolio_role]);
+      });
+      const colors = { '天猫': '#ff4d6d', '京东': '#ff6b6b', '抖音': '#00f2fe', '拼多多': '#e02e24' };
+      const series = Object.keys(seriesMap).map(ch => ({
+        name: ch, type: 'scatter', symbolSize: 12, data: seriesMap[ch], itemStyle: { color: colors[ch] || '#8b5cf6' }
+      }));
+      chartScatter.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { formatter: (p) => `<b>${p.seriesName} - ${p.data[2]}</b><br/>净GMV: ¥${Number(p.data[0]).toLocaleString()}<br/>边际贡献率: ${p.data[1]}%` },
+        legend: { top: 0, textStyle: { color: '#94a3b8' } },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+        xAxis: { type: 'value', name: '净GMV', splitLine: { lineStyle: { color: '#1e293b' } } },
+        yAxis: { type: 'value', name: '边际贡献率', splitLine: { lineStyle: { color: '#1e293b' } } },
+        series: series
+      });
+    }
+
+    function renderSkuTable(skus) {
+      const tbody = document.getElementById('skuTableBody');
+      tbody.innerHTML = '';
+      skus.forEach(sku => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${sku.channel}</strong></td>
+          <td><code>${sku.sku_id}</code></td>
+          <td>${sku.sku_name}</td>
+          <td><span class="badge badge-info">${sku.price_band}</span></td>
+          <td>${Number(sku.visitors).toLocaleString()}</td>
+          <td>¥${Number(sku.net_gmv).toLocaleString('zh-CN', {minimumFractionDigits: 2})}</td>
+          <td>${(sku.cvr * 100).toFixed(2)}%</td>
+          <td style="${sku.refund_rate > 0.2 ? 'color:#ef4444;' : ''}">${(sku.refund_rate * 100).toFixed(1)}%</td>
+          <td>${sku.roas.toFixed(2)}</td>
+          <td>${(sku.contribution_margin * 100).toFixed(1)}%</td>
+          <td><span class="badge badge-success">${sku.portfolio_role}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>
