@@ -272,6 +272,14 @@ async def export_pdd_import_file(data: Dict[str, Any]):
     df.to_csv(export_path, index=False, encoding="utf-8-sig")
     return FileResponse(path=export_path, filename="pdd_goods_upload.csv", media_type="text/csv")
 
+@app.get("/api/pdd/download-sop")
+async def download_pdd_sop_doc():
+    """下载拼多多爆款 SOP 全景指南 Markdown 文档"""
+    sop_path = os.path.join(BASE_DIR, "拼多多高阶运营与新链接无基础销量起爆_SOP全景指南.md")
+    if not os.path.exists(sop_path):
+        raise HTTPException(status_code=404, detail="SOP文件不存在")
+    return FileResponse(path=sop_path, filename="拼多多高阶运营与新链接无基础销量起爆_SOP全景指南.md", media_type="text/markdown")
+
 # 定义算价请求体
 class SinglePricingRequest(BaseModel):
     sku_name: str = "默认规格"
