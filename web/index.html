@@ -1545,6 +1545,47 @@
         <div style="margin-bottom:10px;"><strong style="color:#fbbf24;">【阶段2：第4-7天 稳出单累评】</strong><br/>${roadmap["第4-7天_稳出单累评"]}</div>
         <div><strong style="color:#34d399;">【阶段3：第8-14天 拖价撬动自然流】</strong><br/>${roadmap["第8-14天_拖价撬动自然流"]}</div>
       `;
+
+      // 8. 全盘同步：将对标解析出的黄金 SKU 阵型与单件供货底价带入 TAB 2 “全店多 SKU 矩阵算价与日度/月度利润模拟看板”
+      if (skuMatrix.skus && skuMatrix.skus.length > 0) {
+        const baseCostInput = parseFloat(document.getElementById('pddCostInput').value) || 0.94;
+        
+        batchSkusList = skuMatrix.skus.map((s, idx) => {
+          let qty = 1;
+          if (s.level.includes('主推') || (s.sku_name && (s.sku_name.includes('买一送一') || s.sku_name.includes('2件')))) {
+            qty = 2;
+          } else if (s.level.includes('高客单') || (s.sku_name && s.sku_name.includes('3件'))) {
+            qty = 3;
+          }
+          
+          let coupon = 2.0;
+          let dailyOrders = 50;
+          if (s.level.includes('引流')) {
+            coupon = 1.0;
+            dailyOrders = 162;
+          } else if (s.level.includes('主推')) {
+            coupon = 3.0;
+            dailyOrders = 210;
+          } else if (s.level.includes('高客单')) {
+            coupon = 4.0;
+            dailyOrders = 13;
+          }
+
+          return {
+            sku_name: s.sku_name || `规格套餐 ${idx+1}`,
+            sku_qty: qty,
+            unit_cost: baseCostInput > 0 ? baseCostInput : 0.94,
+            selling_price: Number(s.price || s.selling_price || 9.9),
+            coupon_amount: coupon,
+            discount_rate: 0.7,
+            daily_orders: dailyOrders
+          };
+        });
+
+        // 重新渲染批量算价矩阵大盘看板
+        renderBatchPricingTable();
+        showToast("已全自动同步对标黄金 SKU 矩阵到【🧮 智能算价与投产模拟器】看板！");
+      }
     }
 
     function copyText(txt) {
