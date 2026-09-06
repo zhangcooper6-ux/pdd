@@ -1714,7 +1714,9 @@
     }
 
     function loadRealScoopPreset() {
-      document.getElementById('pddBenchmarkInput').value = `多功能舀米勺挖面粉勺家用长柄带夹子舀面勺量勺创意量勺米粉勺子\nhttps://mobile.yangkeduo.com/goods.html?goods_id=999276922010`;
+      document.getElementById('pddCostInput').value = "4.50";
+      syncPricingInputs('pddCostInput', 'calcCostInput');
+      document.getElementById('pddBenchmarkInput').value = "多功能舀米勺挖面粉勺家用长柄带夹子舀面勺量勺创意量勺米粉勺子\nhttps://mobile.yangkeduo.com/goods.html?goods_id=999276922010";
       document.getElementById('customTargetTitle').value = "多功能舀米勺挖面粉勺家用长柄带夹子舀面勺量勺创意量勺米粉勺子";
       document.getElementById('customTargetSkusText').value = 
 `款式:随机色【4个装】带夹+升级加厚 价格： 34.29
@@ -1776,7 +1778,8 @@
     async function runPddBenchmarkAnalysis(btnElem) {
       const urlInput = document.getElementById('pddBenchmarkInput');
       let urlText = urlInput ? urlInput.value.trim() : '';
-      const baseCost = parseFloat(document.getElementById('pddCostInput').value) || 4.5;
+      const baseCostVal = parseFloat(document.getElementById('pddCostInput').value);
+      const baseCost = !isNaN(baseCostVal) ? baseCostVal : 4.5;
       const mode = document.getElementById('pddModeSelect').value;
       const apiKey = document.getElementById('deepseekApiKey').value.trim() || undefined;
 
