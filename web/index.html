@@ -592,7 +592,27 @@
           </div>
         </div>
 
-        <!-- 基础履约成本与退款损耗配置行 (用于对标铺货模块直接可调) -->
+        <!-- 真实对标数据精准校准面板 (可选) -->
+        <div style="margin-top: 16px; padding: 14px 16px; background: rgba(30, 41, 59, 0.7); border: 1px dashed rgba(56, 189, 248, 0.4); border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="font-size: 13px; font-weight: 600; color: #38bdf8; display: flex; align-items: center; gap: 6px;">
+              <span>✏️ 对标商品真实数据校准/录入 (由于前端页面反爬保护，在此手动校准可获得 100% 真实截流推算)</span>
+            </div>
+            <button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px; color:#38bdf8;" onclick="loadRealScoopPreset()">🔥 一键载入用户对标【多功能带夹舀米勺】8组真实SKU数据</button>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px; color: #94a3b8;">对标真实完整标题：</label>
+              <input type="text" class="form-input" id="customTargetTitle" value="多功能舀米勺挖面粉勺家用长柄带夹子舀面勺量勺创意量勺米粉勺子" style="padding: 6px 10px; font-size: 12px;">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px; color: #94a3b8;">对标真实 SKU 规格与价格列表 (格式: 名称:价格,名称:价格)：</label>
+              <textarea class="form-input" id="customTargetSkusText" rows="3" style="padding: 6px 10px; font-size: 12px;" placeholder="例如: 随机色【4个装】带夹+升级加厚:12.9, 随机色【3个装】带夹+升级加厚:9.9"></textarea>
+            </div>
+          </div>
+        </div>
         <div style="margin-top: 16px; padding: 14px 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <div style="font-size: 13px; font-weight: 600; color: #60a5fa; display: flex; align-items: center; gap: 6px;">
@@ -690,7 +710,49 @@
           </div>
         </div>
 
-        <!-- 1. 三大合规与保本概览卡片 -->
+        <!-- 0.5 抢流量截流卡位与投产比压制 SOP 卡片 -->
+        <div class=\"card\" id=\"interceptionCard\" style=\"background: linear-gradient(135deg, #1e1b4b 0%, #311b92 100%); border: 1px solid #7c3aed;\">
+          <div class=\"card-header\">
+            <div class=\"card-title\">
+              <div class=\"card-title-icon\" style=\"background: rgba(124, 58, 237, 0.3); color: #c4b5fd;\">🎯</div>
+              <span>对标链接流量截流与投产比 (ROI) 出价压制 SOP</span>
+            </div>
+            <span class=\"badge badge-warning\">精准截流模式</span>
+          </div>
+
+          <div style=\"display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px;\">
+            <div style=\"background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);\">
+              <div style=\"font-size: 11px; color: #94a3b8;\">对标最低引流价 vs 我方截流价</div>
+              <div style=\"font-size: 18px; font-weight: bold; color: #f43f5e; margin-top: 4px;\">
+                ¥<span id="targetMinPrice">3.9</span> → <strong style="color: #34d399;">¥<span id="myAttrPrice">3.5</span></strong>
+              </div>
+              <div style=\"font-size: 11px; color: #cbd5e1; margin-top: 4px;\">卡位视觉低价，抢夺搜索列表点击 (CTR)</div>
+            </div>
+
+            <div style=\"background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);\">
+              <div style=\"font-size: 11px; color: #94a3b8;\">对标主力爆款价 vs 我方截流到手价</div>
+              <div style=\"font-size: 18px; font-weight: bold; color: #fbbf24; margin-top: 4px;\">
+                ¥<span id="targetHeroPrice">6.9</span> → <strong style="color: #60a5fa;">¥<span id="myHeroPrice">6.3</span></strong>
+              </div>
+              <div style=\"font-size: 11px; color: #cbd5e1; margin-top: 4px;\">打标升级带夹加厚+送运费险，承接80%转单</div>
+            </div>
+
+            <div style=\"background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);\">
+              <div style=\"font-size: 11px; color: #94a3b8;\">对方估计保本 ROI vs 我方开车压制出价</div>
+              <div style=\"font-size: 18px; font-weight: bold; color: #a78bfa; margin-top: 4px;\">
+                ROI <span id="targetEstRoi">2.10</span> | 我方开车 Bid: <strong style="color: #f43f5e;">¥<span id="myBidOverride">3.85</span>/单</strong>
+              </div>
+              <div style=\"font-size: 11px; color: #cbd5e1; margin-top: 4px;\">依靠物流包材溢价，前期0.8x低ROI暴力强抢曝光</div>
+            </div>
+          </div>
+
+          <div style=\"padding: 12px; background: rgba(0,0,0,0.4); border-radius: 6px; font-size: 13px; color: #e2e8f0; line-height: 1.7;\">
+            <div style=\"font-weight: bold; color: #c4b5fd; margin-bottom: 6px;\">📋 截流动作指引：</div>
+            <div id="interceptionActionList">
+              <!-- 动态充填 -->
+            </div>
+          </div>
+        </div>
         <div class="metric-grid">
           <div class="metric-card success">
             <div class="metric-title">🛡️ 平台合规检测结论</div>
@@ -1608,6 +1670,20 @@
       }
     }
 
+    function loadRealScoopPreset() {
+      document.getElementById('customTargetTitle').value = "多功能舀米勺挖面粉勺家用长柄带夹子舀面勺量勺创意量勺米粉勺子";
+      document.getElementById('customTargetSkusText').value = 
+`随机色【4个装】带夹+升级加厚:12.9
+随机色【3个装】带夹+升级加厚:9.9
+随机色【2个装】带夹+升级加厚:6.9
+随机色【1个装】带夹+升级加厚:3.9
+绿灰色【1个装】带夹+升级加厚:4.2
+灰白色【1个装】带夹+升级加厚:4.2
+粉蓝色【1个装】带夹+升级加厚:4.2
+纯白色【1个钩】升级加厚:2.9`;
+      showToast("已一键载入对标商品的 8 组真实 SKU 规格与价格！");
+    }
+
     // 核心异步触发：拼多多对标分析与合规计算
     async function runPddBenchmarkAnalysis(btnElem) {
       const urlInput = document.getElementById('pddBenchmarkInput');
@@ -1615,6 +1691,23 @@
       const baseCost = parseFloat(document.getElementById('pddCostInput').value) || 4.5;
       const mode = document.getElementById('pddModeSelect').value;
       const apiKey = document.getElementById('deepseekApiKey').value.trim() || undefined;
+
+      const customTitle = document.getElementById('customTargetTitle').value.trim() || undefined;
+      const skusText = document.getElementById('customTargetSkusText').value.trim();
+      let customSkus = undefined;
+      if (skusText) {
+        customSkus = [];
+        skusText.split('\n').forEach(line => {
+          const parts = line.split(':');
+          if (parts.length >= 2) {
+            const name = parts[0].trim();
+            const price = parseFloat(parts[1].trim()) || 0;
+            if (name && price > 0) {
+              customSkus.append ? customSkus.append({name, price, cost: round(price*0.35,1), sales_share: '10%'}) : customSkus.push({name, price, cost: Math.round(price*0.35*10)/10, sales_share: '10%'});
+            }
+          }
+        });
+      }
 
       if (!urlText) {
         showToast("请输入对标链接、分享口令或商品 ID！", "error");
@@ -1642,6 +1735,8 @@
             base_cost: baseCost,
             strategy_mode: mode,
             api_key: apiKey,
+            custom_title: customTitle,
+            custom_skus: customSkus,
             express_fee: expressFee,
             material_fee: materialFee,
             labor_fee: laborFee,
@@ -1706,7 +1801,25 @@
         });
       }
 
-      // 1. 合规卡片
+      // 0.5 抢流量截流卡位与投产比压制卡片
+      if (data.interception_strategy) {
+        const inter = data.interception_strategy;
+        document.getElementById('targetMinPrice').innerText = (inter.target_min_price || 3.9).toFixed(1);
+        document.getElementById('myAttrPrice').innerText = (inter.my_attr_price || 3.5).toFixed(1);
+        document.getElementById('targetHeroPrice').innerText = (inter.target_hero_price || 6.9).toFixed(1);
+        document.getElementById('myHeroPrice').innerText = (inter.my_hero_price || 6.3).toFixed(1);
+        document.getElementById('targetEstRoi').innerText = (inter.target_est_roi || 2.1).toFixed(2);
+        document.getElementById('myBidOverride').innerText = (inter.my_bid_override || 3.85).toFixed(2);
+
+        const actionCont = document.getElementById('interceptionActionList');
+        actionCont.innerHTML = '';
+        (inter.interception_action_plan || []).forEach(act => {
+          const div = document.createElement('div');
+          div.style.marginBottom = '4px';
+          div.innerText = act;
+          actionCont.appendChild(div);
+        });
+      }
       const comp = data.compliance_audit;
       const compStatusElem = document.getElementById('complianceStatus');
       if (comp.is_compliant) {

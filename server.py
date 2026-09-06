@@ -199,6 +199,8 @@ class BenchmarkAnalyzeRequest(BaseModel):
     base_cost: float = 4.5
     strategy_mode: str = "micro_pay" # free_traffic, micro_pay, strong_pay
     api_key: Optional[str] = None
+    custom_title: Optional[str] = None
+    custom_skus: Optional[List[Dict[str, Any]]] = None
     express_fee: float = 1.8
     material_fee: float = 0.1
     labor_fee: float = 0.25
@@ -211,8 +213,12 @@ async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
     """
     拼多多对标商品智能拆解与上架重塑接口
     """
-    # 1. 结构化提取
-    raw_info = PddProductAnalyzer.parse_product_url(req.url_or_text)
+    # 1. 结构化提取 (支持自定义校准的真实标题与 SKU)
+    raw_info = PddProductAnalyzer.parse_product_url(
+        req.url_or_text, 
+        custom_skus=req.custom_skus, 
+        custom_title=req.custom_title
+    )
     
     # 2. 合规与违禁词排查
     compliance = PddProductAnalyzer.audit_compliance(raw_info["raw_title"], raw_info["benchmark_skus"])
@@ -231,6 +237,18 @@ async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
         insurance_fee=req.insurance_fee,
         platform_commission_rate=req.platform_commission_rate
     )
+
+    # 4.5 精算对标卡位截流与投产压制策略
+    interception = PddProductAnalyzer.calculate_interception_strategy(
+        benchmark_skus=raw_info["benchmark_skus"],
+        base_cost=req.base_cost,
+        express_fee=req.express_fee,
+        material_fee=req.material_fee,
+        labor_fee=req.labor_fee,
+        refund_rate=req.refund_rate,
+        platform_commission_rate=req.platform_commission_rate
+    )
+    sku_matrix["interception_strategy"] = interception
     
     # 5. 生图与视觉重塑提示词
     visuals = PddProductAnalyzer.generate_ai_visual_prompts(titles["title_plans"][0]["title"], raw_info["selling_points"])
@@ -254,6 +272,7 @@ async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
             "title_plans": titles["title_plans"],
             "naming_rule": titles["naming_rule"],
             "golden_sku_matrix": sku_matrix,
+            "interception_strategy": interception,
             "activity_plan": sku_matrix["activity_plan"],
             "visual_prompts": visuals,
             "pdd_open_api_schema": mms_data,

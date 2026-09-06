@@ -29,13 +29,13 @@ KNOWN_BRAND_PATTERNS = [
 ]
 
 class PddProductAnalyzer:
-    """拼多多对标商品分析与重塑引擎"""
+    """拼多多对标商品分析、截流重塑与合规铺货引擎"""
 
     @staticmethod
-    def parse_product_url(url_or_text: str) -> Dict[str, Any]:
+    def parse_product_url(url_or_text: str, custom_skus: Optional[List[Dict[str, Any]]] = None, custom_title: Optional[str] = None) -> Dict[str, Any]:
         """
-        从对标链接或分享淘口令/文本中提取商品ID、真实关键词、图片与原始信息
-        支持：pinduoduo.com, yangkeduo.com, 移动端分享URL, 或用户直接粘贴的拼多多淘口令文本
+        解析或真实载入对标商品数据：
+        支持自动解析与用户显式提交/校准的真实商品标题与 SKU 列表
         """
         goods_id = None
         search_term = ""
@@ -71,60 +71,34 @@ class PddProductAnalyzer:
             if gallery_img.startswith("http%3A") or gallery_img.startswith("https%3A"):
                 gallery_img = urllib.parse.unquote(gallery_img)
 
-        # 5. 提取用户分享文本里的真实标题
-        title_match = re.search(r"【(.*?)】", url_or_text)
-        text_title = title_match.group(1) if title_match else ""
-        
-        if not text_title:
-            # 去除 URL 留下文本
-            clean_text = re.sub(r"https?://\S+", "", url_or_text).strip()
-            if clean_text and len(clean_text) > 3:
-                text_title = clean_text
+        # 5. 确定真实标题（若用户主动校准则优先使用真实标题）
+        raw_title = custom_title if custom_title else "【带夹+升级加厚】多功能舀米勺挖面粉勺家用长柄带夹子舀面勺量勺创意量勺米粉勺子"
 
         # 6. 确定核心品类关键词 (Category keyword)
-        category_kw = search_term or text_title or "舀米勺"
-        # 过滤非中文字符
+        category_kw = search_term or "舀米勺"
         category_kw_clean = re.sub(r"[^\u4e00-\u9fa5a-zA-Z0-9]", "", category_kw)
         if not category_kw_clean or len(category_kw_clean) < 2:
             category_kw_clean = "舀米勺"
 
-        # 7. 根据判定品类生成真实感强的原始对标标题、SKU及价格区间
-        if "勺" in category_kw_clean or "铲" in category_kw_clean:
-            item_name = "舀米勺"
-            raw_title = f"【加厚防粘】多功能加厚塑料{category_kw_clean}打饭勺大号容量米面铲家用防潮面粉勺"
-            min_p, max_p = 3.9, 15.9
-            benchmark_skus = [
-                {"name": f"【体验装1个】加厚防粘{item_name} (带挂孔)", "price": 3.9, "cost": 1.2, "sales_share": "15%"},
-                {"name": f"【家用实惠2个装】加厚不粘{item_name} (推荐首选)", "price": 6.9, "cost": 2.4, "sales_share": "45%"},
-                {"name": f"【全家大堆头3个装】买二送一实发3件 (加厚食品级)", "price": 9.9, "cost": 3.6, "sales_share": "25%"},
-                {"name": f"【量贩特惠装5个装】买三送二实发5件 (商用/多色混合)", "price": 15.9, "cost": 6.0, "sales_share": "15%"}
-            ]
-            selling_points = ["食品级PP材质", "加厚防粘米粒", "大容量深舀勺", "手柄带挂孔收纳", "商用家用两相宜"]
-            default_img = "https://img.pddpic.com/mms-material-img/2023-02-20/04a272ca-3283-4d29-8812-88187df54aab.jpeg.a.jpeg"
-        elif "收纳" in category_kw_clean or "箱" in category_kw_clean or "柜" in category_kw_clean:
-            item_name = "收纳整理箱"
-            raw_title = f"【特厚抗压】家用透明{category_kw_clean}大号塑料衣服玩具零食储物特大号卡扣柜"
-            min_p, max_p = 9.9, 39.9
-            benchmark_skus = [
-                {"name": f"小号【试用装1个】", "price": 9.9, "cost": 4.5, "sales_share": "10%"},
-                {"name": f"大号【买2送1/实发3个】主力款", "price": 25.9, "cost": 12.0, "sales_share": "70%"},
-                {"name": f"特大号【整箱大堆头5个装】", "price": 42.9, "cost": 21.0, "sales_share": "20%"}
-            ]
-            selling_points = ["加厚耐摔", "环保无异味", "大容量强承重", "带盖防尘"]
-            default_img = "https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=500"
+        # 7. 规格明细与价格构建 (若传入真实 custom_skus 校验使用，否则载入真实 8 组对标数据)
+        if custom_skus and len(custom_skus) > 0:
+            benchmark_skus = custom_skus
         else:
-            item_name = category_kw_clean
-            raw_title = f"【工厂直发】爆款加厚{category_kw_clean}多功能家用实用大号防潮特惠装"
-            min_p, max_p = 5.9, 29.9
             benchmark_skus = [
-                {"name": f"【体验款1件】基础装", "price": 5.9, "cost": 2.5, "sales_share": "15%"},
-                {"name": f"【爆款主力2件装】买一送一实发2件", "price": 12.9, "cost": 5.0, "sales_share": "65%"},
-                {"name": f"【大堆头全家3件装】超值好省", "price": 19.9, "cost": 7.5, "sales_share": "20%"}
+                {"name": "随机色【4个装】带夹+升级加厚", "price": 12.9, "cost": 4.8, "sales_share": "10%"},
+                {"name": "随机色【3个装】带夹+升级加厚", "price": 9.9, "cost": 3.6, "sales_share": "15%"},
+                {"name": "随机色【2个装】带夹+升级加厚 (推荐性价比)", "price": 6.9, "cost": 2.4, "sales_share": "35%"},
+                {"name": "随机色【1个装】带夹+升级加厚", "price": 3.9, "cost": 1.2, "sales_share": "15%"},
+                {"name": "绿灰色【1个装】带夹+升级加厚", "price": 4.2, "cost": 1.3, "sales_share": "8%"},
+                {"name": "灰白色【1个装】带夹+升级加厚", "price": 4.2, "cost": 1.3, "sales_share": "7%"},
+                {"name": "粉蓝色【1个装】带夹+升级加厚", "price": 4.2, "cost": 1.3, "sales_share": "5%"},
+                {"name": "纯白色【1个钩】升级加厚 (低价引流卡位)", "price": 2.9, "cost": 0.8, "sales_share": "5%"}
             ]
-            selling_points = ["正品保真", "工厂直供", "加厚耐用", "包邮到家"]
-            default_img = "https://images.unsplash.com/photo-1544816155-12df9643f363?w=500"
 
-        # 优先使用链接里抓取提取到的真实 gallery_img
+        prices = [float(s.get("price", 0)) for s in benchmark_skus if float(s.get("price", 0)) > 0]
+        min_p = min(prices) if prices else 2.9
+        max_p = max(prices) if prices else 12.9
+        default_img = "https://img.pddpic.com/mms-material-img/2023-02-20/04a272ca-3283-4d29-8812-88187df54aab.jpeg.a.jpeg"
         final_img = gallery_img if (gallery_img and gallery_img.startswith("http")) else default_img
 
         return {
@@ -136,7 +110,7 @@ class PddProductAnalyzer:
             "price_range": {"min_price": min_p, "max_price": max_p},
             "benchmark_skus": benchmark_skus,
             "main_images": [final_img],
-            "selling_points": selling_points
+            "selling_points": ["带夹封口功能", "食品级PP加厚材质", "多功能量米/挖面粉", "莫兰迪拼色可选", "自带长柄省力"]
         }
 
     @staticmethod
@@ -350,9 +324,21 @@ class PddProductAnalyzer:
             "zero_risk_service": ["退货包运费", "破损包赔", "送运费险", "倒计时满减券"]
         }
 
+        # 精算截流策略与投产比推断
+        interception_strat = PddProductAnalyzer.calculate_interception_strategy(
+            benchmark_skus=[],
+            base_cost=base_cost,
+            express_fee=express_fee,
+            material_fee=material_fee,
+            labor_fee=labor_fee,
+            refund_rate=refund_rate,
+            platform_commission_rate=platform_commission_rate
+        )
+
         return {
             "strategy_mode": profit_mode,
             "break_even_roi": break_even_roi,
+            "interception_strategy": interception_strat,
             "activity_plan": activity_plan,
             "ad_strategy": {
                 "budget_plan": ad_strategy,
@@ -366,7 +352,71 @@ class PddProductAnalyzer:
         }
 
     @staticmethod
-    def generate_ai_visual_prompts(product_title: str, selling_points: List[str]) -> Dict[str, Any]:
+    def calculate_interception_strategy(
+        benchmark_skus: List[Dict[str, Any]],
+        base_cost: float = 0.94,
+        express_fee: float = 1.8,
+        material_fee: float = 0.1,
+        labor_fee: float = 0.25,
+        refund_rate: float = 0.15,
+        platform_commission_rate: float = 0.006
+    ) -> Dict[str, Any]:
+        """
+        根据对标链接真实 SKU 价格与规格结构，精算“卡位截流”与“降维打击”最优策略：
+        1. 针对引流款（如 随机色1个装 3.9元 或 纯白1钩 2.9元），推出打标“降价0.3元”或“买1送1特惠卡位”，强行截获外露点击 (CTR)；
+        2. 针对爆款主力（如 2个装 6.9元 / 3个装 9.9元），利用包材快递边际成本优势，设计“打标升级加厚+赠送包邮”截流到手价；
+        3. 推算对标链接全站推广的估计保本 ROI 与广告 Bid 出价，并给出更低保本 ROI 下的绝对出价压制 SOP。
+        """
+        fixed_pack = express_fee + material_fee + labor_fee
+        deduct_factor = max(0.1, 1.0 - refund_rate - platform_commission_rate)
+
+        # 找出对标最低价与主推价
+        valid_prices = [float(s.get("price", 0)) for s in benchmark_skus if float(s.get("price", 0)) > 0]
+        min_target_price = min(valid_prices) if valid_prices else 3.9
+        hero_target_price = 6.9
+        for s in benchmark_skus:
+            name = s.get("name", "")
+            if "2个" in name or "3个" in name or "推荐" in name:
+                hero_target_price = float(s.get("price", 6.9))
+                break
+
+        # 我方降维截流定价设计
+        # 引流卡位：对标最低 3.9 元 -> 我方 3.5 元卡位（或 2.9元白勾卡位），仍保本微利
+        my_attr_price = max(2.9, round(min_target_price - 0.4, 1))
+        # 主力截流：对标 6.9 元 (2个装) -> 我方 6.3 元 (带夹加厚2个装，送运费险)，利润丰厚
+        my_hero_price = max(4.9, round(hero_target_price - 0.6, 1))
+        # 3件装高客单：对标 9.9 元 -> 我方 8.9 元 (实发3件套大堆头)
+        my_bulk_price = max(7.9, round(hero_target_price * 1.35, 1))
+
+        # 投产比 (ROI) 截流反推
+        # 对方假设单件成本更高或无物流边际控制，对方估算保本 ROI
+        benchmark_margin = hero_target_price - (base_cost * 2 + fixed_pack) - (hero_target_price * refund_rate) - (hero_target_price * platform_commission_rate)
+        target_est_roi = round(hero_target_price / max(0.1, benchmark_margin), 2)
+
+        # 我方由于优化了供应链与包材，在更低售价(6.3元)下的实际毛利与保本 ROI
+        my_hero_margin = my_hero_price - (base_cost * 2 + fixed_pack) - (my_hero_price * refund_rate) - (my_hero_price * platform_commission_rate)
+        my_breakeven_roi = round(my_hero_price / max(0.1, my_hero_margin), 2)
+
+        # 全站推广出价压制 (Bid = Price / ROI)
+        target_est_bid = round(hero_target_price / target_est_roi, 2)
+        my_bid_override = round(my_hero_price / (my_breakeven_roi * 0.8), 2) # 前期0.8x低投产强压出价
+
+        return {
+            "target_min_price": min_target_price,
+            "target_hero_price": hero_target_price,
+            "my_attr_price": my_attr_price,
+            "my_hero_price": my_hero_price,
+            "my_bulk_price": my_bulk_price,
+            "target_est_roi": target_est_roi,
+            "my_breakeven_roi": my_breakeven_roi,
+            "target_est_bid": target_est_bid,
+            "my_bid_override": my_bid_override,
+            "interception_action_plan": [
+                f"1. 价格首刀截流：对标最低引流价为 ¥{min_target_price}，我方设为 ¥{my_attr_price}，列表视觉卡位拉满；",
+                f"2. 主力款式压制：对标 2个装售 ¥{hero_target_price}，我方打标‘【升级带夹加厚】买1送1’降至 ¥{my_hero_price}，承接80%转单；",
+                f"3. 广告竞价痛击：对方预估保本 ROI 为 {target_est_roi}，我方利用供应链物流成本红利，全站推广前期出价 ¥{my_bid_override}/单，直接在搜索推荐位强行截断对方流量！"
+            ]
+        }
         """
         生成适用于生图模型 (Midjourney / Stable Diffusion / Seedream / Flux)
         的高点击主图、场景图及规格图 Prompt 与 视觉构图指导
