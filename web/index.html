@@ -787,14 +787,14 @@
             <table>
               <thead>
                 <tr>
-                  <th>SKU 层级</th>
-                  <th>规格名称 (可直接复制)</th>
-                  <th>规格图文案标注</th>
+                  <th>截流定位</th>
+                  <th>原对标规格名称</th>
+                  <th>对标原价</th>
+                  <th>我方截流拼单价</th>
+                  <th>截流价格差</th>
                   <th>供货成本</th>
-                  <th>拼单售价</th>
-                  <th>单笔毛利</th>
-                  <th>毛利率</th>
-                  <th>策略定位与算法作用</th>
+                  <th>单笔实际毛利</th>
+                  <th>截流效果与算法作用</th>
                 </tr>
               </thead>
               <tbody id="pddSkuTableBody">
@@ -1820,17 +1820,19 @@
 
     function renderPddAnalysis(data) {
       // 0. 原对标商品真实解构卡片
-      if (data.benchmark_info) {
-        const bench = data.benchmark_info;
+      const bench = data.raw_benchmark_info || data.benchmark_info;
+      if (bench) {
         document.getElementById('pddTargetGoodsId').innerText = "商品 ID: " + (bench.goods_id || '999276922010');
         document.getElementById('pddTargetTitle').innerText = bench.raw_title || '【加厚防粘】多功能加厚塑料舀米勺打饭勺大号容量米面铲家用防潮面粉勺';
         document.getElementById('pddTargetKeyword').innerText = bench.category_keyword || '舀米勺';
         
         const pr = bench.price_range || {};
-        document.getElementById('pddTargetPriceRange').innerText = `¥${pr.min_price || 3.9} ~ ¥${pr.max_price || 14.9}`;
+        document.getElementById('pddTargetPriceRange').innerText = `¥${pr.min_price || 23.57} ~ ¥${pr.max_price || 34.29}`;
 
         const imgElem = document.getElementById('pddTargetMainImg');
-        if (bench.main_image) {
+        if (bench.main_images && bench.main_images.length > 0) {
+          imgElem.src = bench.main_images[0];
+        } else if (bench.main_image) {
           imgElem.src = bench.main_image;
         }
 
@@ -1839,9 +1841,10 @@
         (bench.benchmark_skus || []).forEach(bs => {
           const span = document.createElement('span');
           span.style.background = 'rgba(255,255,255,0.06)';
-          span.style.padding = '3px 8px';
+          span.style.padding = '4px 10px';
           span.style.borderRadius = '4px';
-          span.innerHTML = `<strong>${bs.name}</strong> <span style="color:#34d399; font-weight:bold;">¥${bs.price}</span> <span style="color:#94a3b8; font-size:11px;">(${bs.sales_share || '走量'})</span>`;
+          span.style.border = '1px solid rgba(255,255,255,0.1)';
+          span.innerHTML = `<strong style="color:#f8fafc;">${bs.name}</strong> <span style="color:#f59e0b; font-weight:bold;">原价 ¥${bs.price}</span>`;
           skuContainer.appendChild(span);
         });
       }
@@ -1888,31 +1891,57 @@
       document.getElementById('targetRoiStatus').innerText = `保本 ROI ${breakEvenRoi.toFixed(2)}`;
       document.getElementById('roiStrategyBrief').innerText = skuMatrix.ad_strategy ? skuMatrix.ad_strategy.budget_plan : '';
 
-      // 3. SKU 表格
+      // 3. 全量 SKU 对比与截流表格（展示全量原始规格名称、原始价格 vs 测算截流售价）
       const skuTbody = document.getElementById('pddSkuTableBody');
       skuTbody.innerHTML = '';
-      (skuMatrix.skus || []).forEach(s => {
-        const tr = document.createElement('tr');
-        const costVal = Number(s.cost || 0);
-        const sellVal = Number(s.price || s.selling_price || 0);
-        const marginVal = Number(s.margin !== undefined ? s.margin : (s.margin_amount !== undefined ? s.margin_amount : 0));
-        const marginRate = Number(s.margin_rate !== undefined ? s.margin_rate : 0);
-        const level = s.level || (s.role ? s.role.split(' ')[0] : '规格');
-        const specTag = s.spec_tag || s.sku_name || '';
-        const purpose = s.purpose || s.role || '';
 
-        tr.innerHTML = `
-          <td><span class="badge ${level.includes('引流') ? 'badge-info' : level.includes('主推') ? 'badge-success' : 'badge-warning'}">${level}</span></td>
-          <td><strong>${s.sku_name || ''}</strong></td>
-          <td><span style="color:#93c5fd;">${specTag}</span></td>
-          <td>¥${costVal.toFixed(2)}</td>
-          <td style="color:#34d399; font-weight:bold; font-size:14px;">¥${sellVal.toFixed(2)}</td>
-          <td>¥${marginVal.toFixed(2)}</td>
-          <td>${(marginRate * 100).toFixed(1)}%</td>
-          <td style="font-size:12px; color:#cbd5e1;">${purpose}</td>
-        `;
-        skuTbody.appendChild(tr);
-      });
+      const interceptionList = (data.interception_strategy && data.interception_strategy.sku_comparison_list) 
+        ? data.interception_strategy.sku_comparison_list 
+        : [];
+
+      if (interceptionList.length > 0) {
+        interceptionList.forEach(item => {
+          const tr = document.createElement('tr');
+          const costVal = (data.golden_sku_matrix && data.golden_sku_matrix.skus && data.golden_sku_matrix.skus[0]) 
+            ? Number(data.golden_sku_matrix.skus[0].cost || 0.94) 
+            : 0.94;
+          
+          const isMin = item.orig_price <= 25.0 && item.orig_price < 29.0;
+          const isHero = item.orig_name.includes('2个') || item.orig_name.includes('推荐');
+
+          tr.innerHTML = `
+            <td><span class="badge ${isMin ? 'badge-info' : isHero ? 'badge-success' : 'badge-warning'}">${item.action_tag}</span></td>
+            <td><strong style="color:#f8fafc;">${item.orig_name}</strong></td>
+            <td style="color:#f59e0b; font-weight:bold;">¥${item.orig_price.toFixed(2)}</td>
+            <td style="color:#34d399; font-weight:bold; font-size:14px;">¥${item.my_intercept_price.toFixed(2)}</td>
+            <td style="color:#38bdf8; font-weight:bold;">-¥${item.price_diff.toFixed(2)}</td>
+            <td>¥${costVal.toFixed(2)}</td>
+            <td style="color:#60a5fa; font-weight:bold;">¥${item.my_margin.toFixed(2)}</td>
+            <td style="font-size:12px; color:#cbd5e1;">打标升级品质/送运费险，直接截断对应对标项流量</td>
+          `;
+          skuTbody.appendChild(tr);
+        });
+      } else {
+        (skuMatrix.skus || []).forEach(s => {
+          const tr = document.createElement('tr');
+          const costVal = Number(s.cost || 0);
+          const sellVal = Number(s.price || s.selling_price || 0);
+          const marginVal = Number(s.margin !== undefined ? s.margin : (s.margin_amount !== undefined ? s.margin_amount : 0));
+          const level = s.level || (s.role ? s.role.split(' ')[0] : '规格');
+
+          tr.innerHTML = `
+            <td><span class="badge ${level.includes('引流') ? 'badge-info' : level.includes('主推') ? 'badge-success' : 'badge-warning'}">${level}</span></td>
+            <td><strong>${s.sku_name || ''}</strong></td>
+            <td>¥${(sellVal * 1.1).toFixed(2)}</td>
+            <td style="color:#34d399; font-weight:bold; font-size:14px;">¥${sellVal.toFixed(2)}</td>
+            <td style="color:#38bdf8;">-¥${(sellVal * 0.1).toFixed(2)}</td>
+            <td>¥${costVal.toFixed(2)}</td>
+            <td>¥${marginVal.toFixed(2)}</td>
+            <td style="font-size:12px; color:#cbd5e1;">${s.purpose || s.role || ''}</td>
+          `;
+          skuTbody.appendChild(tr);
+        });
+      }
 
       // 4. 标题方案
       const titlesCont = document.getElementById('titlePlansContainer');

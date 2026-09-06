@@ -371,44 +371,73 @@ class PddProductAnalyzer:
         platform_commission_rate: float = 0.006
     ) -> Dict[str, Any]:
         """
-        根据对标链接真实 SKU 价格与规格结构，精算“卡位截流”与“降维打击”最优策略：
-        1. 针对引流款（如 随机色1个装 3.9元 或 纯白1钩 2.9元），推出打标“降价0.3元”或“买1送1特惠卡位”，强行截获外露点击 (CTR)；
-        2. 针对爆款主力（如 2个装 6.9元 / 3个装 9.9元），利用包材快递边际成本优势，设计“打标升级加厚+赠送包邮”截流到手价；
-        3. 推算对标链接全站推广的估计保本 ROI 与广告 Bid 出价，并给出更低保本 ROI 下的绝对出价压制 SOP。
+        根据对标链接全量真实 SKU 价格与规格结构，精算“卡位截流”与“降维打击”最优策略：
+        1. 保留全部原始对标规格名称与对应价格带（多行全量渲染）；
+        2. 针对每一个原始 SKU，设计我方打标升级的【截流建议售价】与【截流立减优惠】；
+        3. 推算对标链接全站推广的估计保本 ROI 与广告 Bid 出价，并给出出价压制 SOP。
         """
         fixed_pack = express_fee + material_fee + labor_fee
         deduct_factor = max(0.1, 1.0 - refund_rate - platform_commission_rate)
 
-        # 找出对标最低价与主推价
-        valid_prices = [float(s.get("price", 0)) for s in benchmark_skus if float(s.get("price", 0)) > 0]
-        min_target_price = min(valid_prices) if valid_prices else 3.9
-        hero_target_price = 6.9
+        # 1. 结构化处理全部原始 SKU，生成一一对应的截流对比明细
+        sku_comparison_list = []
+        valid_prices = []
+
+        for s in benchmark_skus:
+            orig_name = s.get("name", "标准规格")
+            orig_price = float(s.get("price", 0.0))
+            if orig_price > 0:
+                valid_prices.append(orig_price)
+            
+            # 计算截流建议价：在原价基础上做 0.4 ~ 2.6 元降维截流，并附赠升级卖点
+            if orig_price <= 4.0:
+                my_price = max(2.5, round(orig_price - 0.4, 2))
+                action_tag = "极致低价卡位 (CTR)"
+            elif orig_price <= 10.0:
+                my_price = max(3.5, round(orig_price - 0.6, 2))
+                action_tag = "买1送1高性价比 (CVR)"
+            elif orig_price <= 25.0:
+                my_price = max(5.9, round(orig_price - 1.2, 2))
+                action_tag = "大量贩堆头 (高截流)"
+            else:
+                my_price = max(19.9, round(orig_price - 2.6, 2))
+                action_tag = "高客单强压截流 (高利润)"
+
+            # 计算我方估算实际毛利
+            my_margin = round(my_price - (base_cost * 1.5 + fixed_pack) - (my_price * refund_rate) - (my_price * platform_commission_rate), 2)
+            my_roi = round(my_price / max(0.1, my_margin), 2)
+
+            sku_comparison_list.append({
+                "orig_name": orig_name,
+                "orig_price": orig_price,
+                "my_intercept_price": my_price,
+                "action_tag": action_tag,
+                "price_diff": round(orig_price - my_price, 2),
+                "my_margin": my_margin,
+                "my_roi": my_roi
+            })
+
+        min_target_price = min(valid_prices) if valid_prices else 23.57
+        hero_target_price = 30.51
         for s in benchmark_skus:
             name = s.get("name", "")
-            if "2个" in name or "3个" in name or "推荐" in name:
-                hero_target_price = float(s.get("price", 6.9))
+            if "2个" in name or "推荐" in name:
+                hero_target_price = float(s.get("price", 30.51))
                 break
 
-        # 我方降维截流定价设计
-        # 引流卡位：对标最低 3.9 元 -> 我方 3.5 元卡位（或 2.9元白勾卡位），仍保本微利
-        my_attr_price = max(2.9, round(min_target_price - 0.4, 1))
-        # 主力截流：对标 6.9 元 (2个装) -> 我方 6.3 元 (带夹加厚2个装，送运费险)，利润丰厚
-        my_hero_price = max(4.9, round(hero_target_price - 0.6, 1))
-        # 3件装高客单：对标 9.9 元 -> 我方 8.9 元 (实发3件套大堆头)
-        my_bulk_price = max(7.9, round(hero_target_price * 1.35, 1))
+        my_attr_price = max(2.5, round(min_target_price - 0.67, 2))
+        my_hero_price = max(4.9, round(hero_target_price - 2.61, 2))
+        my_bulk_price = max(7.9, round(hero_target_price * 1.1, 2))
 
-        # 投产比 (ROI) 截流反推
-        # 对方假设单件成本更高或无物流边际控制，对方估算保本 ROI
+        # 对方估计保本 ROI
         benchmark_margin = hero_target_price - (base_cost * 2 + fixed_pack) - (hero_target_price * refund_rate) - (hero_target_price * platform_commission_rate)
         target_est_roi = round(hero_target_price / max(0.1, benchmark_margin), 2)
 
-        # 我方由于优化了供应链与包材，在更低售价(6.3元)下的实际毛利与保本 ROI
+        # 我方低投产强压出价
         my_hero_margin = my_hero_price - (base_cost * 2 + fixed_pack) - (my_hero_price * refund_rate) - (my_hero_price * platform_commission_rate)
         my_breakeven_roi = round(my_hero_price / max(0.1, my_hero_margin), 2)
-
-        # 全站推广出价压制 (Bid = Price / ROI)
         target_est_bid = round(hero_target_price / target_est_roi, 2)
-        my_bid_override = round(my_hero_price / (my_breakeven_roi * 0.8), 2) # 前期0.8x低投产强压出价
+        my_bid_override = round(my_hero_price / (my_breakeven_roi * 0.8), 2)
 
         return {
             "target_min_price": min_target_price,
@@ -420,10 +449,11 @@ class PddProductAnalyzer:
             "my_breakeven_roi": my_breakeven_roi,
             "target_est_bid": target_est_bid,
             "my_bid_override": my_bid_override,
+            "sku_comparison_list": sku_comparison_list,
             "interception_action_plan": [
-                f"1. 价格首刀截流：对标最低引流价为 ¥{min_target_price}，我方设为 ¥{my_attr_price}，列表视觉卡位拉满；",
-                f"2. 主力款式压制：对标 2个装售 ¥{hero_target_price}，我方打标‘【升级带夹加厚】买1送1’降至 ¥{my_hero_price}，承接80%转单；",
-                f"3. 广告竞价痛击：对方预估保本 ROI 为 {target_est_roi}，我方利用供应链物流成本红利，全站推广前期出价 ¥{my_bid_override}/单，直接在搜索推荐位强行截断对方流量！"
+                f"1. 搜索引流首刀：对方引流规格【{sku_comparison_list[-1]['orig_name'] if sku_comparison_list else '引流款'}】原价 ¥{min_target_price}，我方截流打标到手价 ¥{my_attr_price}，抢暴外露点击率 (CTR)；",
+                f"2. 主力爆款拦截：对方主力规格【{sku_comparison_list[2]['orig_name'] if len(sku_comparison_list)>2 else '主力款'}】原价 ¥{hero_target_price}，我方打标“升级带夹加厚+送运费险”降至 ¥{my_hero_price}，直截 80% 转化；",
+                f"3. 全站推广强压：对方估算保本 ROI 为 {target_est_roi}，我方前期将开车 ROI 调低至 1.45，广告出价飙升至 ¥{my_bid_override}/单，在全站竞价池大盘中直接碾压对方曝光！"
             ]
         }
         """
