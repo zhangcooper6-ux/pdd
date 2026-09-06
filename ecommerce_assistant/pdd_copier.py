@@ -64,12 +64,18 @@ class PddProductAnalyzer:
         if kw_match:
             search_term = kw_match.group(1).strip()
 
-        # 4. 提取 URL 参数中的主图 _oak_gallery
+        # 4. 智能提取图片：优先从 URL 参数 _oak_gallery 提取，也可显式从自由文本中匹配图片 URL
         img_match = re.search(r"_oak_gallery=([^&]+)", unquoted_url)
         if img_match:
             gallery_img = img_match.group(1).strip()
             if gallery_img.startswith("http%3A") or gallery_img.startswith("https%3A"):
                 gallery_img = urllib.parse.unquote(gallery_img)
+
+        # 增强提取：支持粘贴任意拼多多 / 网页图片 URL
+        if not gallery_img or not gallery_img.startswith("http"):
+            direct_img_match = re.search(r"(https?://[^\s'\"]+?\.(?:jpg|jpeg|png|webp))", url_or_text, re.IGNORECASE)
+            if direct_img_match:
+                gallery_img = direct_img_match.group(1)
 
         # 5. 确定真实标题与全局文本解析
         # 支持空格/换行分隔（如 "标题 https://..." 或第一行标题第二行链接）
@@ -479,6 +485,61 @@ class PddProductAnalyzer:
         elif not hero_sku:
             hero_sku = attr_sku
 
+        # 根据打法模式动态确定 14 天进阶 SOP 与全站推广出价\n        if strategy_mode == "natural_flow":
+            ad_budget_desc = "纯自然流打法：0 付费预算支出，依靠【新客立减】+【拼单返现】+大额商品券破零，不开启全站推广付费广告。"
+            roi_roadmap_plan = {
+                "第1-3天_活动门槛破零": "报名【拼单返现】与【新客立减】高权重红标活动，积累前 10 单评价破零",
+                "第4-7天_限时秒杀冲量": "提报【限时秒杀/大促立减】体验装，冲刺类目推荐页曝光排名",
+                "第8-14天_自然搜推稳出单": "通过积累正面好评拉动自然搜索流量分发，实现 0 广告费纯靠自然流稳出单"
+            }
+            my_bid_override = 0.0
+            bid_desc = "0 广告费支出 (纯自然流)"
+        elif strategy_mode == "strong_pay":
+            ad_budget_desc = "强付费收割：日预算 500~2000元，保本ROI通常在 1.8~2.2，锁定高客单SKU打透大盘渗透率，靠供应链规模返利盈利。"
+            roi_roadmap_plan = {
+                "第1-3天_保本ROI抢爆曝光": f"建议设定全站目标 ROI = {round(my_breakeven_roi * 0.95, 2)}（接近保本点放量）",
+                "第4-7天_冲刺类目Top榜": f"保持目标 ROI = {round(my_breakeven_roi * 1.0, 2)}，加大预算锁定大堆头高客单收割",
+                "第8-14天_高客单持续盈利": f"目标 ROI = {round(my_breakeven_roi * 1.15, 2)}，吃透大盘高消费力买人群"
+            }
+            my_bid_override = round(my_hero_price / max(0.1, my_breakeven_roi * 0.95), 2)
+            bid_desc = f"¥{my_bid_override}/单 (高客单放量出价)"
+        else: # micro_pay
+            ad_budget_desc = "微付费撬动：日预算锁死50~100元/天，前3天低ROI(1.2~1.4)强吃曝光破零，4-7天累评调至1.6~1.8，8天后每天+0.1拖价。"
+            roi_roadmap_plan = {
+                "第1-3天_强吃曝光破零": f"建议设定全站目标 ROI = {round(my_breakeven_roi * 0.75, 2)}（低于保本点破零）",
+                "第4-7天_稳出单累评": f"逐步回调全站目标 ROI = {round(my_breakeven_roi * 0.95, 2)}（接近保本点）",
+                "第8-14天_拖价撬动自然流": f"每天早晨 +0.05~0.1 微调，目标达到 ROI = {round(my_breakeven_roi * 1.3, 2)}"
+            }
+            my_bid_override = round(my_hero_price / max(0.1, my_breakeven_roi * 0.75), 2)
+            bid_desc = f"¥{my_bid_override}/单 (低ROI暴力出价)"
+
+        # 更新黄金 SKU 矩阵中的广告策略
+        golden_sku_matrix["strategy_mode"] = strategy_mode
+        golden_sku_matrix["ad_strategy"] = {
+            "budget_plan": ad_budget_desc,
+            "roi_roadmap": roi_roadmap_plan
+        }
+
+        # 3. 生成差异化的截流动作指南
+        if strategy_mode == "natural_flow":
+            action_plan_list = [
+                f"1. 搜索引流首刀：对方引流规格【{attr_sku['orig_name']}】原价 ¥{attr_sku['orig_price']}，我方打标‘新客立减’到手价 ¥{attr_sku['my_intercept_price']}，抢暴外露点击率 (CTR)；",
+                f"2. 主力爆款拦截：对方主力规格【{hero_sku['orig_name']}】原价 ¥{hero_sku['orig_price']}，我方打标‘买1送1+送运费险’降至 ¥{hero_sku['my_intercept_price']}，直截 80% 转化；",
+                f"3. 纯自然流拉爆：不开启全站推广，0 广告费支出。通过报名【拼单返现】与【限时秒杀】积累基础销评，靠高搜索权重撬动全站免费自然流量！"
+            ]
+        elif strategy_mode == "strong_pay":
+            action_plan_list = [
+                f"1. 搜索引流首刀：对方引流规格【{attr_sku['orig_name']}】原价 ¥{attr_sku['orig_price']}，我方截流打标到手价 ¥{attr_sku['my_intercept_price']}，抢暴外露点击率 (CTR)；",
+                f"2. 主力爆款拦截：对方主力规格【{hero_sku['orig_name']}】原价 ¥{hero_sku['orig_price']}，我方打标‘升级带夹加厚+送运费险’降至 ¥{hero_sku['my_intercept_price']}，直截 80% 转化；",
+                f"3. 全站强付费收割：对方保本 ROI 为 {target_est_roi}，我方前期将全站目标 ROI 设为 {round(my_breakeven_roi * 0.95, 2)}，广告出价飙至 {bid_desc}，主打大堆头组合全盘收割！"
+            ]
+        else:
+            action_plan_list = [
+                f"1. 搜索引流首刀：对方引流规格【{attr_sku['orig_name']}】原价 ¥{attr_sku['orig_price']}，我方截流打标到手价 ¥{attr_sku['my_intercept_price']}，抢暴外露点击率 (CTR)；",
+                f"2. 主力爆款拦截：对方主力规格【{hero_sku['orig_name']}】原价 ¥{hero_sku['orig_price']}，我方打标‘升级带夹加厚+送运费险’降至 ¥{hero_sku['my_intercept_price']}，直截 80% 转化；",
+                f"3. 全站微付费撬动：对方估算保本 ROI 为 {target_est_roi}，我方前期将开车 ROI 调低至 {round(my_breakeven_roi * 0.75, 2)}，广告出价飙升至 {bid_desc}，在全站竞价池大盘中直接碾压对方曝光！"
+            ]
+
         return {
             "target_min_price": attr_sku["orig_price"],
             "target_hero_price": hero_sku["orig_price"],
@@ -489,12 +550,10 @@ class PddProductAnalyzer:
             "my_breakeven_roi": my_breakeven_roi,
             "target_est_bid": target_est_bid,
             "my_bid_override": my_bid_override,
+            "bid_desc": bid_desc,
             "sku_comparison_list": sku_comparison_list,
-            "interception_action_plan": [
-                f"1. 搜索引流首刀：对方引流规格【{attr_sku['orig_name']}】原价 ¥{attr_sku['orig_price']}，我方截流打标到手价 ¥{attr_sku['my_intercept_price']}，抢暴外露点击率 (CTR)；",
-                f"2. 主力爆款拦截：对方主力规格【{hero_sku['orig_name']}】原价 ¥{hero_sku['orig_price']}，我方打标“升级带夹加厚+送运费险”降至 ¥{hero_sku['my_intercept_price']}，直截 80% 转化；",
-                f"3. 全站推广强压：对方估算保本 ROI 为 {target_est_roi}，我方前期将开车 ROI 调低至 1.45，广告出价飙升至 ¥{my_bid_override}/单，在全站竞价池大盘中直接碾压对方曝光！"
-            ]
+            "interception_action_plan": action_plan_list,
+            "golden_sku_matrix": golden_sku_matrix
         }
 
     @staticmethod

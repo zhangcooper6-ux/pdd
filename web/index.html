@@ -1948,7 +1948,7 @@
         document.getElementById('targetHeroPrice').innerText = (inter.target_hero_price || 6.9).toFixed(1);
         document.getElementById('myHeroPrice').innerText = (inter.my_hero_price || 6.3).toFixed(1);
         document.getElementById('targetEstRoi').innerText = (inter.target_est_roi || 2.1).toFixed(2);
-        document.getElementById('myBidOverride').innerText = (inter.my_bid_override || 3.85).toFixed(2);
+        document.getElementById('myBidOverride').innerText = inter.bid_desc ? inter.bid_desc : ((inter.my_bid_override || 3.85).toFixed(2));
 
         const actionCont = document.getElementById('interceptionActionList');
         actionCont.innerHTML = '';
