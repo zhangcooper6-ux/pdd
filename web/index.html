@@ -1351,12 +1351,14 @@
       const fixedPackCost = express + material + labor + insurance;
       const deductFactor = Math.max(0.1, 1.0 - refund - commission);
 
-      // 实时寻找全表中【引流款(1件装)】当前的拼单售价，若没有则默认8.9元
+      // 实时寻找全表中【拼单售价】最低的 SKU 作为真实的引流款基准价 (若无有效最低价则默认8.9元)
       let currentAttrPrice = 8.9;
       if (batchSkusList && batchSkusList.length > 0) {
-        const attrSku = batchSkusList.find(s => parseInt(s.sku_qty) === 1);
-        if (attrSku && parseFloat(attrSku.selling_price) > 0) {
-          currentAttrPrice = parseFloat(attrSku.selling_price);
+        const validPrices = batchSkusList
+          .map(s => parseFloat(s.selling_price))
+          .filter(p => !isNaN(p) && p > 0);
+        if (validPrices.length > 0) {
+          currentAttrPrice = Math.min(...validPrices);
         }
       }
 
