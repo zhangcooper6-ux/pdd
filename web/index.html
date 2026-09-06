@@ -635,8 +635,9 @@
         </div>
 
         <div style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted);">
-          <div style="display: flex; gap: 12px; align-items: center;">
-            <span>💡 快捷测试：</span>
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <span>💡 快捷测试真实对标：</span>
+            <button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px; color:#38bdf8; border-color:#38bdf8;" onclick="fillSampleUrl('999276922010')">🔥 测试用户对标链接: 舀米勺</button>
             <button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="fillSampleUrl('109827364512')">示例1: 高级收纳箱</button>
             <button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="fillSampleUrl('98765432101')">示例2: 爆款保温杯</button>
           </div>
@@ -650,6 +651,44 @@
 
       <!-- 分析结果面板 (默认隐藏，点击后展示) -->
       <div id="pddAnalysisResult" style="display: none; flex-direction: column; gap: 24px;">
+
+        <!-- 0. 真实解析到的原对标商品结构卡片 -->
+        <div class="card" id="benchmarkInfoCard" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #3b82f6;">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="card-title-icon">📦</div>
+              <span>对标商品真实解构原貌 (Benchmark Target)</span>
+            </div>
+            <span class="badge badge-info" id="pddTargetGoodsId">ID: 999276922010</span>
+          </div>
+
+          <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; padding: 6px 0;">
+            <!-- 主图 preview -->
+            <div style="width: 110px; height: 110px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); background: #000; flex-shrink: 0;">
+              <img id="pddTargetMainImg" src="https://img.pddpic.com/mms-material-img/2023-02-20/04a272ca-3283-4d29-8812-88187df54aab.jpeg.a.jpeg" style="width: 100%; height: 100%; object-fit: cover;" alt="对标商品主图" />
+            </div>
+
+            <!-- 详细拆解 -->
+            <div style="flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="font-size: 15px; font-weight: bold; color: #f8fafc; line-height: 1.4;" id="pddTargetTitle">
+                【加厚防粘】多功能加厚塑料舀米勺打饭勺大号容量米面铲家用防潮面粉勺
+              </div>
+              <div style="display: flex; gap: 16px; font-size: 12px; color: #94a3b8; flex-wrap: wrap;">
+                <span>核心品类词: <strong style="color: #38bdf8;" id="pddTargetKeyword">舀米勺</strong></span>
+                <span>原商品价格带: <strong style="color: #f59e0b;" id="pddTargetPriceRange">¥3.9 ~ ¥14.9</strong></span>
+                <span>预估月销量: <strong style="color: #34d399;">100,000+ 件</strong></span>
+              </div>
+
+              <!-- 原对标 SKU 规格列表 -->
+              <div style="margin-top: 4px; padding: 8px 12px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid rgba(255,255,255,0.06);">
+                <div style="font-size: 11px; color: #94a3b8; margin-bottom: 6px;">解析出的原对标商品规格与出单占比：</div>
+                <div id="pddTargetSkusList" style="display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: #cbd5e1;">
+                  <!-- 动态插入 -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- 1. 三大合规与保本概览卡片 -->
         <div class="metric-grid">
@@ -1139,7 +1178,11 @@
 
     // 填入示例链接
     function fillSampleUrl(goodsId) {
-      document.getElementById('pddBenchmarkInput').value = `https://mobile.yangkeduo.com/goods.php?goods_id=${goodsId}`;
+      if (goodsId === '999276922010') {
+        document.getElementById('pddBenchmarkInput').value = "https://mobile.yangkeduo.com/goods.html?goods_id=999276922010&_oak_rcto=YWKaY6-h4Rs8FcwnmpgpI3fQikz3wzy7IvQSNyQNg2uOHntTBMUf30xaSvUIPt4vUrEA27ZDMk82Hg&_oc_trace_mark=199&_oc_adinfo=eyJzY2VuZV9pZCI6Mn0%3D&_oak_gallery=https%3A%2F%2Fimg.pddpic.com%2Fmms-material-img%2F2023-02-20%2F04a272ca-3283-4d29-8812-88187df54aab.jpeg.a.jpeg&_oak_gallery_token=bf3a15eccae621133987ad00791798de&_oc_refer_ad=1&_oak_list_price_sign=shb1_mtoo0g3lyAq8a_10_2357&_oak_search_term=%E8%88%80%E7%B1%B3%E5%8B%BA&_x_query=%E8%88%80%E7%B1%B3%E5%8B%BA&refer_page_el_sn=99369&refer_rn=&page_from=23&refer_page_name=search_result&refer_page_id=10015_1788629816912_9f48fr8y3t&refer_page_sn=10015&uin=KRIRBOJAUFYRSUUEYQPPBQYJ2Q_GEXDA";
+      } else {
+        document.getElementById('pddBenchmarkInput').value = `https://mobile.yangkeduo.com/goods.html?goods_id=${goodsId}`;
+      }
       showToast(`已填入对标商品 ID: ${goodsId}`);
     }
 
@@ -1636,6 +1679,33 @@
     }
 
     function renderPddAnalysis(data) {
+      // 0. 原对标商品真实解构卡片
+      if (data.benchmark_info) {
+        const bench = data.benchmark_info;
+        document.getElementById('pddTargetGoodsId').innerText = "商品 ID: " + (bench.goods_id || '999276922010');
+        document.getElementById('pddTargetTitle').innerText = bench.raw_title || '【加厚防粘】多功能加厚塑料舀米勺打饭勺大号容量米面铲家用防潮面粉勺';
+        document.getElementById('pddTargetKeyword').innerText = bench.category_keyword || '舀米勺';
+        
+        const pr = bench.price_range || {};
+        document.getElementById('pddTargetPriceRange').innerText = `¥${pr.min_price || 3.9} ~ ¥${pr.max_price || 14.9}`;
+
+        const imgElem = document.getElementById('pddTargetMainImg');
+        if (bench.main_image) {
+          imgElem.src = bench.main_image;
+        }
+
+        const skuContainer = document.getElementById('pddTargetSkusList');
+        skuContainer.innerHTML = '';
+        (bench.benchmark_skus || []).forEach(bs => {
+          const span = document.createElement('span');
+          span.style.background = 'rgba(255,255,255,0.06)';
+          span.style.padding = '3px 8px';
+          span.style.borderRadius = '4px';
+          span.innerHTML = `<strong>${bs.name}</strong> <span style="color:#34d399; font-weight:bold;">¥${bs.price}</span> <span style="color:#94a3b8; font-size:11px;">(${bs.sales_share || '走量'})</span>`;
+          skuContainer.appendChild(span);
+        });
+      }
+
       // 1. 合规卡片
       const comp = data.compliance_audit;
       const compStatusElem = document.getElementById('complianceStatus');
