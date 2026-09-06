@@ -73,7 +73,8 @@ class PddProductAnalyzer:
 
         # 5. 确定真实标题与全局文本解析
         # 支持第一行标题、第二行链接的自由粘贴文本
-        lines = [line.strip() for line in url_or_text.split('\n') if line.strip()]
+        clean_input = url_or_text.replace("`", "").strip()
+        lines = [line.strip() for line in clean_input.split('\n') if line.strip()]
         extracted_title_from_text = None
         for line in lines:
             if not line.startswith("http") and len(line) > 5:

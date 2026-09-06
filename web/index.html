@@ -1812,12 +1812,16 @@
 
       // 智能识别多行自由粘贴文本：自动拆解第一行为标题、找到包含 http 的行为链接
       let customTitle = document.getElementById('customTargetTitle').value.trim() || undefined;
+      
+      // 增强逻辑：如果包含反引号或换行，自动剥离与拆解
+      urlText = urlText.replace(/`/g, '').trim();
+
       if (urlText.includes('\n')) {
         const textLines = urlText.split('\n').map(l => l.trim()).filter(l => l);
         const linkLine = textLines.find(l => l.includes('http'));
         const titleLine = textLines.find(l => !l.includes('http') && l.length > 5);
 
-        if (linkLine) urlText = linkLine.replace(/`/g, '');
+        if (linkLine) urlText = linkLine;
         if (titleLine) {
           customTitle = titleLine;
           document.getElementById('customTargetTitle').value = titleLine;
