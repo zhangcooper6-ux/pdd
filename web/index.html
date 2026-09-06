@@ -1945,9 +1945,12 @@
       if (interceptionList.length > 0) {
         interceptionList.forEach(item => {
           const tr = document.createElement('tr');
-          const costVal = (data.golden_sku_matrix && data.golden_sku_matrix.skus && data.golden_sku_matrix.skus[0]) 
-            ? Number(data.golden_sku_matrix.skus[0].cost || 0.94) 
-            : 0.94;
+          const baseCostVal = parseFloat(document.getElementById('pddCostInput').value);
+          const costVal = (!isNaN(baseCostVal) && baseCostVal > 0) ? baseCostVal : (
+            (data.golden_sku_matrix && data.golden_sku_matrix.skus && data.golden_sku_matrix.skus[0]) 
+              ? Number(data.golden_sku_matrix.skus[0].cost || 0.94) 
+              : 0.94
+          );
           
           const isMin = item.orig_price <= 25.0 && item.orig_price < 29.0;
           const isHero = item.orig_name.includes('2个') || item.orig_name.includes('推荐');
@@ -2064,7 +2067,8 @@
         ? data.interception_strategy.sku_comparison_list
         : undefined;
 
-      const baseCostInput = parseFloat(document.getElementById('pddCostInput').value) || 0.94;
+      const baseCostVal = parseFloat(document.getElementById('pddCostInput').value);
+      const baseCostInput = !isNaN(baseCostVal) ? baseCostVal : 0.94;
 
       if (syncList) {
         batchSkusList = syncList.map((item, idx) => {
