@@ -71,8 +71,16 @@ class PddProductAnalyzer:
             if gallery_img.startswith("http%3A") or gallery_img.startswith("https%3A"):
                 gallery_img = urllib.parse.unquote(gallery_img)
 
-        # 5. 确定真实标题（若用户主动校准则优先使用真实标题）
-        raw_title = custom_title if custom_title else "【带夹+升级加厚】多功能舀米勺挖面粉勺家用长柄带夹子舀面勺量勺创意量勺米粉勺子"
+        # 5. 确定真实标题与全局文本解析
+        # 支持第一行标题、第二行链接的自由粘贴文本
+        lines = [line.strip() for line in url_or_text.split('\n') if line.strip()]
+        extracted_title_from_text = None
+        for line in lines:
+            if not line.startswith("http") and len(line) > 5:
+                extracted_title_from_text = line
+                break
+
+        raw_title = custom_title if custom_title else (extracted_title_from_text if extracted_title_from_text else "多功能舀米勺挖面粉勺家用长柄带夹子舀面勺量勺创意量勺米粉勺子")
 
         # 6. 确定核心品类关键词 (Category keyword)
         category_kw = search_term or "舀米勺"
@@ -84,15 +92,16 @@ class PddProductAnalyzer:
         if custom_skus and len(custom_skus) > 0:
             benchmark_skus = custom_skus
         else:
+            # 内置最新用户对标格式数据 (含最新 23.57~34.29 元价格梯次)
             benchmark_skus = [
-                {"name": "随机色【4个装】带夹+升级加厚", "price": 12.9, "cost": 4.8, "sales_share": "10%"},
-                {"name": "随机色【3个装】带夹+升级加厚", "price": 9.9, "cost": 3.6, "sales_share": "15%"},
-                {"name": "随机色【2个装】带夹+升级加厚 (推荐性价比)", "price": 6.9, "cost": 2.4, "sales_share": "35%"},
-                {"name": "随机色【1个装】带夹+升级加厚", "price": 3.9, "cost": 1.2, "sales_share": "15%"},
-                {"name": "绿灰色【1个装】带夹+升级加厚", "price": 4.2, "cost": 1.3, "sales_share": "8%"},
-                {"name": "灰白色【1个装】带夹+升级加厚", "price": 4.2, "cost": 1.3, "sales_share": "7%"},
-                {"name": "粉蓝色【1个装】带夹+升级加厚", "price": 4.2, "cost": 1.3, "sales_share": "5%"},
-                {"name": "纯白色【1个钩】升级加厚 (低价引流卡位)", "price": 2.9, "cost": 0.8, "sales_share": "5%"}
+                {"name": "随机色【4个装】带夹+升级加厚", "price": 34.29, "cost": 12.0, "sales_share": "10%"},
+                {"name": "随机色【3个装】带夹+升级加厚", "price": 32.40, "cost": 9.0, "sales_share": "15%"},
+                {"name": "随机色【2个装】带夹+升级加厚", "price": 30.51, "cost": 6.0, "sales_share": "35%"},
+                {"name": "随机色【1个装】带夹+升级加厚", "price": 28.62, "cost": 3.0, "sales_share": "15%"},
+                {"name": "绿灰色【1个装】带夹+升级加厚", "price": 28.62, "cost": 3.0, "sales_share": "8%"},
+                {"name": "灰白色【1个装】带夹+升级加厚", "price": 28.62, "cost": 3.0, "sales_share": "7%"},
+                {"name": "粉蓝色【1个装】带夹+升级加厚", "price": 28.62, "cost": 3.0, "sales_share": "5%"},
+                {"name": "纯白色【1个钩】升级加厚 (低价引流卡位)", "price": 23.57, "cost": 2.0, "sales_share": "5%"}
             ]
 
         prices = [float(s.get("price", 0)) for s in benchmark_skus if float(s.get("price", 0)) > 0]

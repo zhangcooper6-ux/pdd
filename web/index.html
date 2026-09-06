@@ -608,8 +608,8 @@
             </div>
 
             <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label" style="font-size: 11px; color: #94a3b8;">对标真实 SKU 规格与价格列表 (格式: 名称:价格,名称:价格)：</label>
-              <textarea class="form-input" id="customTargetSkusText" rows="3" style="padding: 6px 10px; font-size: 12px;" placeholder="例如: 随机色【4个装】带夹+升级加厚:12.9, 随机色【3个装】带夹+升级加厚:9.9"></textarea>
+              <label class="form-label" style="font-size: 11px; color: #94a3b8;">对标真实 SKU 规格与价格列表 (支持自由粘贴 <code>款式:xxx 价格： 23.57</code> 或 <code>名称:价格</code>)：</label>
+              <textarea class="form-input" id="customTargetSkusText" rows="4" style="padding: 6px 10px; font-size: 12px;" placeholder="支持自由粘贴：&#10;款式:随机色【4个装】带夹+升级加厚 价格： 34.29&#10;款式:纯白色【1个钩】升级加厚 价格： 23.57"></textarea>
             </div>
           </div>
         </div>
@@ -1673,41 +1673,79 @@
     function loadRealScoopPreset() {
       document.getElementById('customTargetTitle').value = "多功能舀米勺挖面粉勺家用长柄带夹子舀面勺量勺创意量勺米粉勺子";
       document.getElementById('customTargetSkusText').value = 
-`随机色【4个装】带夹+升级加厚:12.9
-随机色【3个装】带夹+升级加厚:9.9
-随机色【2个装】带夹+升级加厚:6.9
-随机色【1个装】带夹+升级加厚:3.9
-绿灰色【1个装】带夹+升级加厚:4.2
-灰白色【1个装】带夹+升级加厚:4.2
-粉蓝色【1个装】带夹+升级加厚:4.2
-纯白色【1个钩】升级加厚:2.9`;
-      showToast("已一键载入对标商品的 8 组真实 SKU 规格与价格！");
+`款式:随机色【4个装】带夹+升级加厚 价格： 34.29
+款式:随机色【3个装】带夹+升级加厚 价格： 32.40
+款式:随机色【2个装】带夹+升级加厚 价格： 30.51
+款式:随机色【1个装】带夹+升级加厚 价格： 28.62
+款式:绿灰色【1个装】带夹+升级加厚 价格： 28.62
+款式:灰白色【1个装】带夹+升级加厚 价格： 28.62
+款式:粉蓝色【1个装】带夹+升级加厚 价格： 28.62
+款式:纯白色【1个钩】升级加厚 价格： 23.57`;
+      showToast("已一键载入对标商品的 8 组最新真实格式 SKU 规格与价格！");
+    }
+
+    // 核心智能解析器：支持用户自由粘贴 “款式:xxx 价格： 12.3” 或 “名称:价格”
+    function parseCustomSkusFromText(skusText) {
+      if (!skusText) return undefined;
+      const customSkus = [];
+      skusText.split('\n').forEach(line => {
+        const cleanLine = line.trim();
+        if (!cleanLine) return;
+
+        let name = '';
+        let price = 0;
+
+        // 匹配用户格式：“款式:随机色【4个装】带夹+升级加厚 价格： 34.29” 或 “价格：34.29”
+        if (cleanLine.includes('价格')) {
+          const match = cleanLine.match(/(?:款式\s*[:：]\s*)?(.*?)\s*价格\s*[:：]\s*([\d\.]+)/);
+          if (match) {
+            name = match[1].trim();
+            price = parseFloat(match[2]) || 0;
+          }
+        } else if (cleanLine.includes(':') || cleanLine.includes('：')) {
+          // 备用兼容 “名称:价格”
+          const sep = cleanLine.includes(':') ? ':' : '：';
+          const parts = cleanLine.split(sep);
+          name = parts[0].trim();
+          price = parseFloat(parts[1].trim()) || 0;
+        }
+
+        if (name && price > 0) {
+          customSkus.push({
+            name: name,
+            price: price,
+            cost: Math.round(price * 0.25 * 10) / 10,
+            sales_share: '12%'
+          });
+        }
+      });
+      return customSkus.length > 0 ? customSkus : undefined;
     }
 
     // 核心异步触发：拼多多对标分析与合规计算
     async function runPddBenchmarkAnalysis(btnElem) {
       const urlInput = document.getElementById('pddBenchmarkInput');
-      const urlText = urlInput ? urlInput.value.trim() : '';
+      let urlText = urlInput ? urlInput.value.trim() : '';
       const baseCost = parseFloat(document.getElementById('pddCostInput').value) || 4.5;
       const mode = document.getElementById('pddModeSelect').value;
       const apiKey = document.getElementById('deepseekApiKey').value.trim() || undefined;
 
-      const customTitle = document.getElementById('customTargetTitle').value.trim() || undefined;
-      const skusText = document.getElementById('customTargetSkusText').value.trim();
-      let customSkus = undefined;
-      if (skusText) {
-        customSkus = [];
-        skusText.split('\n').forEach(line => {
-          const parts = line.split(':');
-          if (parts.length >= 2) {
-            const name = parts[0].trim();
-            const price = parseFloat(parts[1].trim()) || 0;
-            if (name && price > 0) {
-              customSkus.append ? customSkus.append({name, price, cost: round(price*0.35,1), sales_share: '10%'}) : customSkus.push({name, price, cost: Math.round(price*0.35*10)/10, sales_share: '10%'});
-            }
-          }
-        });
+      // 智能识别多行自由粘贴文本：自动拆解第一行为标题、找到包含 http 的行为链接
+      let customTitle = document.getElementById('customTargetTitle').value.trim() || undefined;
+      if (urlText.includes('\n')) {
+        const textLines = urlText.split('\n').map(l => l.trim()).filter(l => l);
+        const linkLine = textLines.find(l => l.includes('http'));
+        const titleLine = textLines.find(l => !l.includes('http') && l.length > 5);
+
+        if (linkLine) urlText = linkLine.replace(/`/g, '');
+        if (titleLine) {
+          customTitle = titleLine;
+          document.getElementById('customTargetTitle').value = titleLine;
+        }
       }
+
+      const skusText = document.getElementById('customTargetSkusText').value.trim();
+      const customSkus = parseCustomSkusFromText(skusText);
 
       if (!urlText) {
         showToast("请输入对标链接、分享口令或商品 ID！", "error");
