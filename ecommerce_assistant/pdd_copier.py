@@ -72,14 +72,21 @@ class PddProductAnalyzer:
                 gallery_img = urllib.parse.unquote(gallery_img)
 
         # 5. 确定真实标题与全局文本解析
-        # 支持第一行标题、第二行链接的自由粘贴文本 (兼容 \r\n Windows 换行符)
+        # 支持空格/换行分隔（如 "标题 https://..." 或第一行标题第二行链接）
         clean_input = url_or_text.replace("`", "").strip()
-        lines = [line.strip() for line in re.split(r'[\r\n]+', clean_input) if line.strip()]
         extracted_title_from_text = None
-        for line in lines:
-            if not line.startswith("http") and len(line) > 2:
-                extracted_title_from_text = line
-                break
+
+        http_idx = clean_input.find("http")
+        if http_idx > 0:
+            possible_t = clean_input[:http_idx].strip()
+            if len(possible_t) > 2:
+                extracted_title_from_text = possible_t
+        else:
+            lines = [line.strip() for line in re.split(r'[\r\n]+', clean_input) if line.strip()]
+            for line in lines:
+                if not line.startswith("http") and len(line) > 2:
+                    extracted_title_from_text = line
+                    break
 
         raw_title = custom_title if custom_title else (extracted_title_from_text if extracted_title_from_text else "多功能舀米勺挖面粉勺家用长柄带夹子舀面勺量勺创意量勺米粉勺子")
 

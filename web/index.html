@@ -1810,13 +1810,28 @@
       const mode = document.getElementById('pddModeSelect').value;
       const apiKey = document.getElementById('deepseekApiKey').value.trim() || undefined;
 
-      // 智能识别多行自由粘贴文本：自动拆解第一行为标题、找到包含 http 的行为链接
+      // 智能识别单行/多行混合文本：支持空格分隔（如 "标题 https://..."）或换行分隔
       let customTitle = document.getElementById('customTargetTitle').value.trim() || undefined;
       
-      // 兼容所有换行符 (\r\n 或 \n)，且先拆分再清洗反引号
-      const rawLines = urlText.split(/\r?\n/).map(l => l.replace(/`/g, '').trim()).filter(l => l);
+      let rawCleanText = urlText.replace(/`/g, '').trim();
       
-      if (rawLines.length > 0) {
+      // 如果包含 http，尝试抽取 http 链接与前面的纯文本标题
+      const httpIdx = rawCleanText.indexOf('http');
+      if (httpIdx > 0) {
+        // http 之前的部分为标题
+        const possibleTitle = rawCleanText.substring(0, httpIdx).trim();
+        // http 及之后的部分为链接
+        const possibleLink = rawCleanText.substring(httpIdx).trim().split(/\s+/)[0];
+        
+        if (possibleTitle.length > 2) {
+          customTitle = possibleTitle;
+          document.getElementById('customTargetTitle').value = possibleTitle;
+        }
+        if (possibleLink) {
+          urlText = possibleLink;
+        }
+      } else if (rawCleanText.includes('\n') || rawCleanText.includes('\r')) {
+        const rawLines = rawCleanText.split(/\r?\n/).map(l => l.trim()).filter(l => l);
         const linkLine = rawLines.find(l => l.includes('http'));
         const titleLine = rawLines.find(l => !l.includes('http') && l.length > 2);
 
