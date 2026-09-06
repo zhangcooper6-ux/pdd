@@ -379,9 +379,24 @@ class PddProductAnalyzer:
         fixed_pack = express_fee + material_fee + labor_fee
         deduct_factor = max(0.1, 1.0 - refund_rate - platform_commission_rate)
 
-        # 1. 结构化处理全部原始 SKU，生成一一对应的截流对比明细
+        # 1. 结构化处理全部原始 SKU，结合【黄金 4 阶梯 SKU 矩阵】与【倍率防违规】进行精准截流倒算
         sku_comparison_list = []
         valid_prices = []
+
+        # 获取黄金 4 阶梯矩阵推算售价 (sku1:引流价, sku2:买一送一高溢价, sku3:大堆头)
+        golden_matrix = PddProductAnalyzer.design_golden_sku_matrix(
+            base_cost=base_cost,
+            profit_mode="micro_pay",
+            express_fee=express_fee,
+            material_fee=material_fee,
+            labor_fee=labor_fee,
+            refund_rate=refund_rate,
+            platform_commission_rate=platform_commission_rate
+        )
+        golden_skus = golden_matrix.get("skus", [])
+        golden_attr_p = golden_skus[0]["price"] if len(golden_skus) > 0 else 8.9
+        golden_hero_p = golden_skus[1]["price"] if len(golden_skus) > 1 else 21.0
+        golden_bulk_p = golden_skus[2]["price"] if len(golden_skus) > 2 else 27.0
 
         for s in benchmark_skus:
             orig_name = s.get("name", "标准规格")
@@ -389,19 +404,27 @@ class PddProductAnalyzer:
             if orig_price > 0:
                 valid_prices.append(orig_price)
             
-            # 计算截流建议价：在原价基础上做 0.4 ~ 2.6 元降维截流，并附赠升级卖点
+            # 截流定价逻辑：以黄金矩阵为收益地板，以对标原价降维折扣为拉满 CTR/CVR 的截流天花板
             if orig_price <= 4.0:
-                my_price = max(2.5, round(orig_price - 0.4, 2))
-                action_tag = "极致低价卡位 (CTR)"
+                my_price = max(golden_attr_p, round(orig_price - 0.4, 2))
+                action_tag = "黄金引流卡位 (CTR)"
             elif orig_price <= 10.0:
-                my_price = max(3.5, round(orig_price - 0.6, 2))
+                my_price = max(round(base_cost*2 + fixed_pack + 1.5, 2), round(orig_price - 0.6, 2))
                 action_tag = "买1送1高性价比 (CVR)"
             elif orig_price <= 25.0:
-                my_price = max(5.9, round(orig_price - 1.2, 2))
-                action_tag = "大量贩堆头 (高截流)"
+                # 若对方价格较高，优先引入黄金 2.36x 倍率防冲高
+                my_price = min(round(orig_price - 1.2, 2), golden_hero_p)
+                action_tag = "黄金高溢价截流 (高ROI)"
             else:
-                my_price = max(19.9, round(orig_price - 2.6, 2))
-                action_tag = "高客单强压截流 (高利润)"
+                # 针对高客单价 (如 28~34元)，以黄金 3.03x 矩阵做锚定保护
+                my_price = max(golden_bulk_p, round(orig_price - 2.6, 2))
+                action_tag = "大堆头防比价截流 (高利润)"
+
+            # 安全倍率拦截：避免跨 SKU 突破 4.5 倍率引发拼多多风控限流
+            if len(valid_prices) > 1:
+                min_p = min(valid_prices)
+                if my_price > min_p * 4.4:
+                    my_price = round(min_p * 4.4, 2)
 
             # 计算我方估算实际毛利
             my_margin = round(my_price - (base_cost * 1.5 + fixed_pack) - (my_price * refund_rate) - (my_price * platform_commission_rate), 2)
