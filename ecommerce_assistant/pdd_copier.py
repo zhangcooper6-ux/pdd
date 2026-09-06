@@ -398,21 +398,21 @@ class PddProductAnalyzer:
             if orig_price > 0:
                 valid_prices.append(orig_price)
             
-            # 截流定价逻辑：精准比对对标原价，做 0.6 ~ 2.6 元的降维截流降价
+            # 截流定价逻辑：引入黄金 4 阶梯矩阵收益保底 (golden_bulk_p/golden_attr_p)
+            # 若黄金保底价高于对标原价折扣，出现负数差价，作为商家亏损与防亏红线预警！
             if orig_price <= 4.0:
-                my_price = max(2.5, round(orig_price - 0.4, 2))
-                action_tag = "极致低价卡位 (CTR)"
+                my_price = max(golden_attr_p, round(orig_price - 0.4, 2))
+                action_tag = "黄金引流卡位 (CTR)"
             elif orig_price <= 10.0:
-                my_price = max(3.5, round(orig_price - 0.6, 2))
+                my_price = max(round(base_cost*2 + fixed_pack + 1.5, 2), round(orig_price - 0.6, 2))
                 action_tag = "买1送1高性价比 (CVR)"
             elif orig_price <= 25.0:
-                # 针对 23.57 元等低价卡位，便宜 0.67 元形成搜索列表价格优势
-                my_price = max(4.9, round(orig_price - 0.67, 2))
-                action_tag = "低价卡位强截流 (高CTR)"
+                my_price = min(round(orig_price - 1.2, 2), golden_hero_p)
+                action_tag = "黄金高溢价截流 (高ROI)"
             else:
-                # 针对 28~34 元的高客单价，做 1.20 ~ 2.60 元的深度降维折扣
-                my_price = max(19.9, round(orig_price - 2.60, 2))
-                action_tag = "高客单强压截流 (高利润)"
+                # 黄金大堆头保底价 (如39.40元) 兜底，引发负数价格差预警
+                my_price = max(golden_bulk_p, round(orig_price - 2.6, 2))
+                action_tag = "大堆头防亏保底截流 (亏损预警)"
 
             # 安全倍率拦截：避免跨 SKU 突破 4.4 倍率引发拼多多风控限流
             if len(valid_prices) > 1:
