@@ -456,6 +456,9 @@ class PddProductAnalyzer:
                 f"3. 全站推广强压：对方估算保本 ROI 为 {target_est_roi}，我方前期将开车 ROI 调低至 1.45，广告出价飙升至 ¥{my_bid_override}/单，在全站竞价池大盘中直接碾压对方曝光！"
             ]
         }
+
+    @staticmethod
+    def generate_ai_visual_prompts(product_title: str, selling_points: List[str]) -> Dict[str, Any]:
         """
         生成适用于生图模型 (Midjourney / Stable Diffusion / Seedream / Flux)
         的高点击主图、场景图及规格图 Prompt 与 视觉构图指导
