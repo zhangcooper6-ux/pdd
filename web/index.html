@@ -1508,6 +1508,11 @@
       if (sourceEl && targetEl) {
         targetEl.value = sourceEl.value;
       }
+      // 保证同步单件成本到单品快捷算价器
+      if (sourceId === 'pddCostInput') {
+        const singleCostEl = document.getElementById('singleUnitCost');
+        if (singleCostEl) singleCostEl.value = sourceEl.value;
+      }
       if (sourceId === 'pddCostInput' || targetId === 'pddCostInput') {
         const val = parseFloat(document.getElementById('pddCostInput').value);
         if (!isNaN(val) && val > 0 && batchSkusList && batchSkusList.length > 0) {
@@ -1796,6 +1801,10 @@
       let urlText = urlInput ? urlInput.value.trim() : '';
       const baseCostVal = parseFloat(document.getElementById('pddCostInput').value);
       const baseCost = !isNaN(baseCostVal) ? baseCostVal : 4.5;
+      
+      // 同步把 Tab 2 下单品快捷算价器里的单件成本也赋值为 baseCost
+      const singleUnitCostEl = document.getElementById('singleUnitCost');
+      if (singleUnitCostEl) singleUnitCostEl.value = baseCost;
       const mode = document.getElementById('pddModeSelect').value;
       const apiKey = document.getElementById('deepseekApiKey').value.trim() || undefined;
 
