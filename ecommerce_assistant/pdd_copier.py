@@ -100,7 +100,7 @@ class PddProductAnalyzer:
         if custom_skus and len(custom_skus) > 0:
             benchmark_skus = custom_skus
         else:
-            # 内置最新用户对标格式数据 (含最新 23.57~34.29 元价格梯次)
+            # 兼容多种常见的真实规格录入模板
             benchmark_skus = [
                 {"name": "随机色【4个装】带夹+升级加厚", "price": 34.29, "cost": 12.0, "sales_share": "10%"},
                 {"name": "随机色【3个装】带夹+升级加厚", "price": 32.40, "cost": 9.0, "sales_share": "15%"},
@@ -464,11 +464,26 @@ class PddProductAnalyzer:
         target_est_bid = round(hero_target_price / target_est_roi, 2)
         my_bid_override = round(my_hero_price / (my_breakeven_roi * 0.8), 2)
 
+        # 动态捕捉真实引流款 SKU (最低价项) 与真实主力爆款 SKU (价格居中/带有2个装/主力关键词)
+        sorted_skus = sorted(sku_comparison_list, key=lambda x: x["orig_price"])
+        attr_sku = sorted_skus[0] if sorted_skus else {"orig_name": "引流款", "orig_price": min_target_price, "my_intercept_price": my_attr_price}
+        
+        # 寻找主力爆款 SKU：优先查找包含 '2个' 或 '主力' 或价格最接近 30元的项
+        hero_sku = None
+        for item in sorted_skus:
+            if "2个" in item["orig_name"] or "主力" in item["orig_name"] or "爆款" in item["orig_name"]:
+                hero_sku = item
+                break
+        if not hero_sku and len(sorted_skus) > 1:
+            hero_sku = sorted_skus[len(sorted_skus) // 2]
+        elif not hero_sku:
+            hero_sku = attr_sku
+
         return {
-            "target_min_price": min_target_price,
-            "target_hero_price": hero_target_price,
-            "my_attr_price": my_attr_price,
-            "my_hero_price": my_hero_price,
+            "target_min_price": attr_sku["orig_price"],
+            "target_hero_price": hero_sku["orig_price"],
+            "my_attr_price": attr_sku["my_intercept_price"],
+            "my_hero_price": hero_sku["my_intercept_price"],
             "my_bulk_price": my_bulk_price,
             "target_est_roi": target_est_roi,
             "my_breakeven_roi": my_breakeven_roi,
@@ -476,8 +491,8 @@ class PddProductAnalyzer:
             "my_bid_override": my_bid_override,
             "sku_comparison_list": sku_comparison_list,
             "interception_action_plan": [
-                f"1. 搜索引流首刀：对方引流规格【{sku_comparison_list[-1]['orig_name'] if sku_comparison_list else '引流款'}】原价 ¥{min_target_price}，我方截流打标到手价 ¥{my_attr_price}，抢暴外露点击率 (CTR)；",
-                f"2. 主力爆款拦截：对方主力规格【{sku_comparison_list[2]['orig_name'] if len(sku_comparison_list)>2 else '主力款'}】原价 ¥{hero_target_price}，我方打标“升级带夹加厚+送运费险”降至 ¥{my_hero_price}，直截 80% 转化；",
+                f"1. 搜索引流首刀：对方引流规格【{attr_sku['orig_name']}】原价 ¥{attr_sku['orig_price']}，我方截流打标到手价 ¥{attr_sku['my_intercept_price']}，抢暴外露点击率 (CTR)；",
+                f"2. 主力爆款拦截：对方主力规格【{hero_sku['orig_name']}】原价 ¥{hero_sku['orig_price']}，我方打标“升级带夹加厚+送运费险”降至 ¥{hero_sku['my_intercept_price']}，直截 80% 转化；",
                 f"3. 全站推广强压：对方估算保本 ROI 为 {target_est_roi}，我方前期将开车 ROI 调低至 1.45，广告出价飙升至 ¥{my_bid_override}/单，在全站竞价池大盘中直接碾压对方曝光！"
             ]
         }
