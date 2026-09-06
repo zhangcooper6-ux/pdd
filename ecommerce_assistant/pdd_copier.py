@@ -328,8 +328,7 @@ class PddProductAnalyzer:
             }
         ]
 
-        # 保持保本 ROI 的一致性取值：优先使用截流算法中测算的真实主力爆款保本 ROI，保持卡片与全盘数据一致
-        break_even_roi = my_breakeven_roi if 'my_breakeven_roi' in locals() else (round(sku2_price / m2, 2) if m2 > 0 else 99.0)
+        break_even_roi = round(sku2_price / m2, 2) if m2 > 0 else 99.0
 
         activity_plan = {
             "forbidden_rules": [
