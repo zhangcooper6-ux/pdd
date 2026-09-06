@@ -1426,15 +1426,10 @@
           document.getElementById('singleCoupon').value = finalCoupon;
         }
 
-        // 2. 将单件成本底价(元)同步到全店多 SKU 矩阵算价看板的所有 SKU 行，若开启黄金算法则触发倒算
+        // 2. 仅在用户显式调整“单品快捷算价计算器”时同步成本，不强制冲掉全局同步过来的精算拼单售价
         if (batchSkusList && batchSkusList.length > 0) {
           batchSkusList.forEach((sku, idx) => {
             sku.unit_cost = currentUnitCost;
-            if (useGoldenAlgorithm) {
-              const calcRes = calculateGoldenSkuPricing(parseInt(sku.sku_qty) || 1, currentUnitCost, sku.sku_name || '', idx);
-              sku.selling_price = calcRes.selling_price;
-              sku.coupon_amount = calcRes.coupon_amount;
-            }
           });
         }
 
