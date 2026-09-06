@@ -889,7 +889,16 @@
             <div class="card-title-icon" style="background: rgba(99, 102, 241, 0.2); color: #818cf8;">🧮</div>
             <span>电商通用算价与付费投产倒推引擎 (支持微付费/半付费/强付费模式)</span>
           </div>
-          <span class="badge badge-info">完全还原 Excel 算价表公式与打法模型</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 12px; color: #cbd5e1;">💎 黄金 SKU 矩阵自动倒算:</span>
+            <label style="position: relative; display: inline-block; width: 42px; height: 22px; margin: 0;">
+              <input type="checkbox" id="useGoldenAlgorithmToggle" checked onchange="toggleGoldenAlgorithmMode()" style="opacity: 0; width: 0; height: 0;">
+              <span id="goldenToggleSlider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #10b981; transition: .3s; border-radius: 22px;">
+                <span id="goldenToggleDot" style="position: absolute; content: ''; height: 16px; width: 16px; left: 22px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%;"></span>
+              </span>
+            </label>
+            <span id="goldenAlgoStatusBadge" class="badge badge-success" style="font-size: 11px;">黄金算法开启</span>
+          </div>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end;">
@@ -1281,6 +1290,42 @@
       }
     }
 
+    let useGoldenAlgorithm = true;
+
+    function toggleGoldenAlgorithmMode() {
+      const toggleInput = document.getElementById('useGoldenAlgorithmToggle');
+      useGoldenAlgorithm = toggleInput.checked;
+      
+      const badge = document.getElementById('goldenAlgoStatusBadge');
+      const slider = document.getElementById('goldenToggleSlider');
+      const dot = document.getElementById('goldenToggleDot');
+
+      if (useGoldenAlgorithm) {
+        badge.className = "badge badge-success";
+        badge.innerText = "黄金算法开启";
+        slider.style.backgroundColor = "#10b981";
+        dot.style.left = "22px";
+        showToast("💎 黄金 SKU 矩阵算法已开启，拼单售价与立减券全自动智能倒算", "success");
+      } else {
+        badge.className = "badge badge-warning";
+        badge.innerText = "自定义模式";
+        slider.style.backgroundColor = "#64748b";
+        dot.style.left = "3px";
+        showToast("✏️ 已切换为【自主自定义模式】，拼单售价与立减券完全由您自由输入设定", "info");
+      }
+
+      // 若重新开启算法，触发一次矩阵重算
+      if (useGoldenAlgorithm) {
+        const uCost = parseFloat(document.getElementById('singleUnitCost').value) || 0.94;
+        batchSkusList.forEach((sku, idx) => {
+          const calcRes = calculateGoldenSkuPricing(parseInt(sku.sku_qty) || 1, uCost, sku.sku_name || '', idx);
+          sku.selling_price = calcRes.selling_price;
+          sku.coupon_amount = calcRes.coupon_amount;
+        });
+        renderBatchPricingTable();
+      }
+    }
+
     // 算价表相关 JS
     let batchSkusList = [
       { sku_name: '买一送一 (两把装)', sku_qty: 2, unit_cost: 0.94, selling_price: 21.0, coupon_amount: 3.0, discount_rate: 0.7, daily_orders: 210 },
@@ -1380,13 +1425,15 @@
           document.getElementById('singleCoupon').value = finalCoupon;
         }
 
-        // 2. 将单件成本底价(元)同步到全店多 SKU 矩阵算价看板的所有 SKU 行，并触发黄金 4 阶梯算法倒算
+        // 2. 将单件成本底价(元)同步到全店多 SKU 矩阵算价看板的所有 SKU 行，若开启黄金算法则触发倒算
         if (batchSkusList && batchSkusList.length > 0) {
           batchSkusList.forEach((sku, idx) => {
             sku.unit_cost = currentUnitCost;
-            const calcRes = calculateGoldenSkuPricing(parseInt(sku.sku_qty) || 1, currentUnitCost, sku.sku_name || '', idx);
-            sku.selling_price = calcRes.selling_price;
-            sku.coupon_amount = calcRes.coupon_amount;
+            if (useGoldenAlgorithm) {
+              const calcRes = calculateGoldenSkuPricing(parseInt(sku.sku_qty) || 1, currentUnitCost, sku.sku_name || '', idx);
+              sku.selling_price = calcRes.selling_price;
+              sku.coupon_amount = calcRes.coupon_amount;
+            }
           });
         }
 
@@ -1561,8 +1608,8 @@
       if (batchSkusList[idx]) {
         batchSkusList[idx][field] = value;
 
-        // 若手动修改了【引流款 (1件装)】的拼单售价 (如由 8.9 改为 13)，全自动触发联动刷新其他所有关联 SKU 的售价倍率上限
-        if (field === 'selling_price' && parseInt(batchSkusList[idx].sku_qty) === 1) {
+        // 若手动修改了【引流款 (1件装)】的拼单售价 (如由 8.9 改为 13)，若开启黄金算法全自动触发联动刷新其他所有关联 SKU 的售价倍率上限
+        if (useGoldenAlgorithm && field === 'selling_price' && parseInt(batchSkusList[idx].sku_qty) === 1) {
           const newAttrPrice = parseFloat(value) || 8.9;
           batchSkusList.forEach((sku, i) => {
             if (i !== idx && parseInt(sku.sku_qty) > 1) {
@@ -1573,8 +1620,8 @@
           });
         }
 
-        // 若调整了包含件数(sku_qty) 或 单件成本(unit_cost)，严格按【黄金 4 阶梯 SKU 矩阵一级底逻辑与推导算法】全自动精确倒算拼单售价与立减券
-        if (field === 'sku_qty' || field === 'unit_cost') {
+        // 若调整了包含件数(sku_qty) 或 单件成本(unit_cost)，在开启黄金算法时全自动倒算拼单售价与立减券
+        if (useGoldenAlgorithm && (field === 'sku_qty' || field === 'unit_cost')) {
           const qty = parseInt(batchSkusList[idx].sku_qty) || 1;
           const uCost = parseFloat(batchSkusList[idx].unit_cost) || 0;
           const skuName = batchSkusList[idx].sku_name || '';
