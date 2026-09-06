@@ -1508,6 +1508,15 @@
       if (sourceEl && targetEl) {
         targetEl.value = sourceEl.value;
       }
+      if (sourceId === 'pddCostInput' || targetId === 'pddCostInput') {
+        const val = parseFloat(document.getElementById('pddCostInput').value);
+        if (!isNaN(val) && val > 0 && batchSkusList && batchSkusList.length > 0) {
+          batchSkusList.forEach(sku => {
+            sku.unit_cost = val;
+          });
+          renderBatchPricingTable();
+        }
+      }
     }
 
     async function renderBatchPricingTable() {
@@ -1729,6 +1738,13 @@
 款式:纯白色【1个钩】升级加厚 价格： 23.57`;
       showToast("已载入数据，正在全自动触发深度对标拆解与合规计算...");
       
+      // 强行把 Tab 2 看板中的 unit_cost 赋值为 4.5
+      if (batchSkusList && batchSkusList.length > 0) {
+        batchSkusList.forEach(sku => {
+          sku.unit_cost = 4.5;
+        });
+      }
+
       // 全自动联动：载入后直接触发主按钮计算
       const btn = document.getElementById('pddAnalyzeBtn');
       if (btn) {
