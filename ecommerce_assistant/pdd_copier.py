@@ -384,7 +384,9 @@ class PddProductAnalyzer:
         material_fee: float = 0.1,
         labor_fee: float = 0.25,
         refund_rate: float = 0.15,
-        platform_commission_rate: float = 0.006
+        platform_commission_rate: float = 0.006,
+        strategy_mode: str = "micro_pay",
+        golden_sku_matrix: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         根据对标链接全量真实 SKU 价格与规格结构，精算“卡位截流”与“降维打击”最优策略：
@@ -392,6 +394,8 @@ class PddProductAnalyzer:
         2. 针对每一个原始 SKU，设计我方打标升级的【截流建议售价】与【截流立减优惠】；
         3. 推算对标链接全站推广的估计保本 ROI 与广告 Bid 出价，并给出出价压制 SOP。
         """
+        if golden_sku_matrix is None:
+            golden_sku_matrix = {}
         fixed_pack = express_fee + material_fee + labor_fee
         deduct_factor = max(0.1, 1.0 - refund_rate - platform_commission_rate)
 
@@ -487,7 +491,8 @@ class PddProductAnalyzer:
         elif not hero_sku:
             hero_sku = attr_sku
 
-        # 根据打法模式动态确定 14 天进阶 SOP 与全站推广出价\n        if strategy_mode == "natural_flow":
+        # 根据打法模式动态确定 14 天进阶 SOP 与全站推广出价
+        if strategy_mode == "natural_flow":
             ad_budget_desc = "纯自然流打法：0 付费预算支出，依靠【新客立减】+【拼单返现】+大额商品券破零，不开启全站推广付费广告。"
             roi_roadmap_plan = {
                 "第1-3天_活动门槛破零": "报名【拼单返现】与【新客立减】高权重红标活动，积累前 10 单评价破零",
@@ -554,8 +559,7 @@ class PddProductAnalyzer:
             "my_bid_override": my_bid_override,
             "bid_desc": bid_desc,
             "sku_comparison_list": sku_comparison_list,
-            "interception_action_plan": action_plan_list,
-            "golden_sku_matrix": golden_sku_matrix
+            "interception_action_plan": action_plan_list
         }
 
     @staticmethod

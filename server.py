@@ -213,72 +213,80 @@ async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
     """
     拼多多对标商品智能拆解与上架重塑接口
     """
-    # 1. 结构化提取 (支持自定义校准的真实标题与 SKU)
-    raw_info = PddProductAnalyzer.parse_product_url(
-        req.url_or_text, 
-        custom_skus=req.custom_skus, 
-        custom_title=req.custom_title
-    )
-    
-    # 2. 合规与违禁词排查
-    compliance = PddProductAnalyzer.audit_compliance(raw_info["raw_title"], raw_info["benchmark_skus"])
-    
-    # 3. 标题与命名规则重塑
-    titles = PddProductAnalyzer.restructure_title_and_rules(raw_info["raw_title"], raw_info["selling_points"])
-    
-    # 4. 黄金SKU矩阵与推广出价测算 (接入全局快递、包材、退率与扣点)
-    sku_matrix = PddProductAnalyzer.design_golden_sku_matrix(
-        base_cost=req.base_cost, 
-        profit_mode=req.strategy_mode,
-        express_fee=req.express_fee,
-        material_fee=req.material_fee,
-        labor_fee=req.labor_fee,
-        refund_rate=req.refund_rate,
-        insurance_fee=req.insurance_fee,
-        platform_commission_rate=req.platform_commission_rate
-    )
-
-    # 4.5 精算对标卡位截流与投产压制策略
-    interception = PddProductAnalyzer.calculate_interception_strategy(
-        benchmark_skus=raw_info["benchmark_skus"],
-        base_cost=req.base_cost,
-        express_fee=req.express_fee,
-        material_fee=req.material_fee,
-        labor_fee=req.labor_fee,
-        refund_rate=req.refund_rate,
-        platform_commission_rate=req.platform_commission_rate
-    )
-    sku_matrix["interception_strategy"] = interception
-    
-    # 5. 生图与视觉重塑提示词
-    visuals = PddProductAnalyzer.generate_ai_visual_prompts(titles["title_plans"][0]["title"], raw_info["selling_points"])
-    
-    # 6. 生成拼多多合规上架MMS数据
-    mms_data = PddProductAnalyzer.generate_pdd_import_schema(titles["title_plans"][0]["title"], sku_matrix["skus"])
-    
-    # 7. 可选调用 DeepSeek
-    deepseek_res = None
-    if req.api_key:
-        deepseek_res = PddProductAnalyzer.call_deepseek_refine(
-            f"请针对对标商品【{raw_info['raw_title']}】，结合微付费/强付费起爆SOP，生成一套更具杀伤力的高点击差异化卖点和评价引流方案。",
-            req.api_key
+    try:
+        # 1. 结构化提取 (支持自定义校准的真实标题与 SKU)
+        raw_info = PddProductAnalyzer.parse_product_url(
+            req.url_or_text, 
+            custom_skus=req.custom_skus, 
+            custom_title=req.custom_title
+        )
+        
+        # 2. 合规与违禁词排查
+        compliance = PddProductAnalyzer.audit_compliance(raw_info["raw_title"], raw_info["benchmark_skus"])
+        
+        # 3. 标题与命名规则重塑
+        titles = PddProductAnalyzer.restructure_title_and_rules(raw_info["raw_title"], raw_info["selling_points"])
+        
+        # 4. 黄金SKU矩阵与推广出价测算 (接入全局快递、包材、退率与扣点)
+        sku_matrix = PddProductAnalyzer.design_golden_sku_matrix(
+            base_cost=req.base_cost, 
+            profit_mode=req.strategy_mode,
+            express_fee=req.express_fee,
+            material_fee=req.material_fee,
+            labor_fee=req.labor_fee,
+            refund_rate=req.refund_rate,
+            insurance_fee=req.insurance_fee,
+            platform_commission_rate=req.platform_commission_rate
         )
 
-    return {
-        "success": True,
-        "data": {
-            "raw_benchmark_info": raw_info,
-            "compliance_audit": compliance,
-            "title_plans": titles["title_plans"],
-            "naming_rule": titles["naming_rule"],
-            "golden_sku_matrix": sku_matrix,
-            "interception_strategy": interception,
-            "activity_plan": sku_matrix["activity_plan"],
-            "visual_prompts": visuals,
-            "pdd_open_api_schema": mms_data,
-            "deepseek_refine": deepseek_res
+        # 4.5 精算对标卡位截流与投产压制策略
+        interception = PddProductAnalyzer.calculate_interception_strategy(
+            benchmark_skus=raw_info["benchmark_skus"],
+            base_cost=req.base_cost,
+            express_fee=req.express_fee,
+            material_fee=req.material_fee,
+            labor_fee=req.labor_fee,
+            refund_rate=req.refund_rate,
+            platform_commission_rate=req.platform_commission_rate,
+            strategy_mode=req.strategy_mode,
+            golden_sku_matrix=sku_matrix
+        )
+        sku_matrix["interception_strategy"] = interception
+        
+        # 5. 生图与视觉重塑提示词
+        visuals = PddProductAnalyzer.generate_ai_visual_prompts(titles["title_plans"][0]["title"], raw_info["selling_points"])
+        
+        # 6. 生成拼多多合规上架MMS数据
+        mms_data = PddProductAnalyzer.generate_pdd_import_schema(titles["title_plans"][0]["title"], sku_matrix["skus"])
+        
+        # 7. 可选调用 DeepSeek
+        deepseek_res = None
+        if req.api_key:
+            deepseek_res = PddProductAnalyzer.call_deepseek_refine(
+                f"请针对对标商品【{raw_info['raw_title']}】，结合微付费/强付费起爆SOP，生成一套更具杀伤力的高点击差异化卖点和评价引流方案。",
+                req.api_key
+            )
+
+        return {
+            "success": True,
+            "data": {
+                "raw_benchmark_info": raw_info,
+                "compliance_audit": compliance,
+                "title_plans": titles["title_plans"],
+                "naming_rule": titles["naming_rule"],
+                "golden_sku_matrix": sku_matrix,
+                "interception_strategy": interception,
+                "activity_plan": sku_matrix["activity_plan"],
+                "visual_prompts": visuals,
+                "pdd_open_api_schema": mms_data,
+                "deepseek_refine": deepseek_res
+            }
         }
-    }
+    except Exception as e:
+        import traceback
+        err_msg = traceback.format_exc()
+        print("ERROR IN analyze_pdd_benchmark:\n", err_msg)
+        return {"success": False, "error": str(e), "traceback": err_msg}
 
 @app.post("/api/pdd/export-import-file")
 async def export_pdd_import_file(data: Dict[str, Any]):

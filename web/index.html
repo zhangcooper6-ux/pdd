@@ -890,15 +890,29 @@
             <div class="card-title-icon" style="background: rgba(99, 102, 241, 0.2); color: #818cf8;">🧮</div>
             <span>电商通用算价与付费投产倒推引擎 (支持微付费/半付费/强付费模式)</span>
           </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 12px; color: #cbd5e1;">💎 黄金 SKU 矩阵自动倒算:</span>
-            <label style="position: relative; display: inline-block; width: 42px; height: 22px; margin: 0;">
-              <input type="checkbox" id="useGoldenAlgorithmToggle" checked onchange="toggleGoldenAlgorithmMode()" style="opacity: 0; width: 0; height: 0;">
-              <span id="goldenToggleSlider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #10b981; transition: .3s; border-radius: 22px;">
-                <span id="goldenToggleDot" style="position: absolute; content: ''; height: 16px; width: 16px; left: 22px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%;"></span>
-              </span>
-            </label>
-            <span id="goldenAlgoStatusBadge" class="badge badge-success" style="font-size: 11px;">黄金算法开启</span>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 6px; background: rgba(15, 23, 42, 0.8); padding: 4px 10px; border-radius: 8px; border: 1px solid #334155;">
+              <span style="font-size: 12px; color: #94a3b8;">⚙️ 算价模式选择:</span>
+              <select id="pricingAlgorithmSelect" class="form-input" style="padding: 3px 8px; font-size: 12px; width: auto; background: #1e293b; color: #f8fafc; border: 1px solid #475569; border-radius: 6px;" onchange="changePricingAlgorithmMode()">
+                <option value="golden" selected>💎 经典黄金 4 阶梯算法 (常规中高溢价/高毛利)</option>
+                <option value="ultra_low_cost">⚡ 极致性价比自然流算法 (≤2元低价卡位/9.9包邮/破零)</option>
+                <option value="marginal_logistics">📦 边际运费多件套算法 (≤2元运费均摊/多件高毛利开车)</option>
+                <option value="custom">✏️ 自主自定义模式 (纯手工自由输入)</option>
+              </select>
+            </div>
+            
+            <!-- 悬浮查看玩法 SOP 胶囊 -->
+            <div class="algo-sop-hover-container" style="position: relative; display: inline-block;">
+              <div id="goldenAlgoStatusBadge" class="badge badge-success" style="font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 5px 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                <span id="algoBadgeText">💎 经典黄金4阶梯</span>
+                <span style="font-size: 12px; opacity: 0.85;">📖 玩法SOP ℹ️</span>
+              </div>
+              
+              <!-- 悬浮弹窗卡片 (Tooltip) -->
+              <div id="algoSopTooltip" class="algo-sop-tooltip" style="display: none; position: absolute; top: calc(100% + 8px); right: 0; width: 440px; max-width: 90vw; background: #0f172a; border: 1px solid #38bdf8; border-radius: 12px; padding: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.6), 0 0 15px rgba(56, 189, 248, 0.2); z-index: 9999; color: #f8fafc;">
+                <div id="algoSopTooltipContent"></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1053,7 +1067,13 @@
             <div class="card-title-icon">📦</div>
             <span>全店多 SKU 矩阵算价与日度/月度利润模拟看板</span>
           </div>
-          <button class="btn btn-outline" style="font-size: 12px;" onclick="addBatchSkuRow()">➕ 添加 SKU 算价行</button>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button class="btn btn-primary" style="font-size: 12px; padding: 5px 12px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; box-shadow: 0 2px 8px rgba(37,99,235,0.35); display: flex; align-items: center; gap: 4px;" onclick="recalculateBatchMatrix()">
+              <span>🔄</span>
+              <span>按当前算法重算全盘</span>
+            </button>
+            <button class="btn btn-outline" style="font-size: 12px;" onclick="addBatchSkuRow()">➕ 添加 SKU 算价行</button>
+          </div>
         </div>
 
         <div class="table-responsive">
@@ -1229,6 +1249,7 @@
     window.addEventListener('DOMContentLoaded', () => {
       initCharts();
       fetchDashboardData();
+      initAlgoSopHoverEvents();
     });
 
     window.addEventListener('resize', () => {
@@ -1291,40 +1312,287 @@
       }
     }
 
-    let useGoldenAlgorithm = true;
+    let currentPricingAlgoMode = 'golden'; // 'golden', 'ultra_low_cost', 'marginal_logistics', 'custom'
 
-    function toggleGoldenAlgorithmMode() {
-      const toggleInput = document.getElementById('useGoldenAlgorithmToggle');
-      useGoldenAlgorithm = toggleInput.checked;
-      
+    // 各算法模式对应的玩法 SOP 与预算策略知识库
+    const ALGORITHM_SOP_GUIDES = {
+      golden: {
+        title: "💎 经典黄金 4 阶梯算法 · 玩法 SOP 与预算策略",
+        themeColor: "#10b981",
+        badge: "适合采购价 > 2 元常规溢价商品",
+        summary: "以 8.9 元引流防破价，13.9 元（到手 11.9）卡位核心买家转化心智带，多件装 21~27 元拉高客单。追求单品高毛利与全站推广快速起量。",
+        sopSteps: [
+          { phase: "1. 测款破零 (第1-3天)", desc: "设置引流款 8.9 限购1件，补 3~5 笔基础销量与图文好评；暂不开车。" },
+          { phase: "2. 冷启动微付费 (第4-7天)", desc: "开启全站推广，日预算 50 元，ROI 设在保本线 / 0.8（约 2.0~2.2）试探抢曝光。" },
+          { phase: "3. 阶梯拖价与放量 (第8-14天)", desc: "曝光稳定后，每天微调抬高目标 ROI 0.05~0.10，压低每单扣费，放大纯利润。" },
+          { phase: "4. 多件装收割 (第15天+)", desc: "通过 3把装（27元）、买一送一（21元）拉升客单价，平摊单单广告费。" }
+        ],
+        budgetGuide: "每日预算建议 50 ~ 100 元，起步测款备用金 300 ~ 500 元。保本 ROI 区间 1.75 ~ 2.20，退款率预估 12%~15%。"
+      },
+      ultra_low_cost: {
+        title: "⚡ 极致性价比自然流算法 · 玩法 SOP 与预算策略",
+        themeColor: "#38bdf8",
+        badge: "专为采购价 ≤ 2 元低成本好物定制",
+        summary: "1件装 3.9~4.9 元超低价卡位破零，坚决不开高额付费车，靠 98%+ 超高好评率与极低退款率（<5%）撬动大盘自然搜索与推荐流量池。",
+        sopSteps: [
+          { phase: "1. 破零与种子评价 (第1-3天)", desc: "1件装设限购1件防扫货，找老客/亲友做 3~5 单实拍图视频好评，严禁开启全站推广。" },
+          { phase: "2. 微付费探针 (第4-7天)", desc: "固定日预算 20~30 元，目标 ROI 设在 3.0~3.5 高位防守（单单出价仅 0.6~0.8 元）验证 CTR/CVR。" },
+          { phase: "3. 切断付费吃自然流 (第8-14天)", desc: "全站预算降为 0 或 10 元巡航，积极提报大促立减/领券中心；利用微赠品破坏比价。" },
+          { phase: "4. 多件套关联转化 (第15天+)", desc: "详情页首屏引导买 2件装（7.9元）或 3件装（11.9元），单客纯利润由 0.5 元暴增至 2~3 元。" }
+        ],
+        budgetGuide: "总启动预算严格封顶 150 ~ 170 元（破零25元 + 微付费75元 + 售后备用30元）。消耗达 25 元若无真实成单坚决停车止损。"
+      },
+      marginal_logistics: {
+        title: "📦 边际运费多件套算法 · 玩法 SOP 与预算策略",
+        themeColor: "#f59e0b",
+        badge: "专为 ≤ 2 元货品拉大毛利安全开车定制",
+        summary: "利用快递首重 1 公斤内边际成本为 0（发1件发3件都是1.8元运费），将 3 件装（12.9~14.9元）作为开车主力，拉出 7~9 元高毛利安全开车。",
+        sopSteps: [
+          { phase: "1. 锚点与主推布局 (第1-3天)", desc: "1件装 4.9 元限购1件作为比价底价锚点，3件装 13.9 元（折合每件仅4.6元买家极满意不退款）。" },
+          { phase: "2. 强付费高出价破局 (第4-7天)", desc: "由于 3件套毛利润高达 7~8 元，保本 ROI 低至 1.8~2.0，全站推广允许出价 6~7 元强吃全网第一梯队曝光！" },
+          { phase: "3. 爆量防退货护城河 (第8-14天)", desc: "单件买家收货容易觉得轻薄，而收到 3 件大包裹心理落差极小，退款率显著低于常规单件款。" },
+          { phase: "4. 利润收割与放量 (第15天+)", desc: "主推 3 件装与 5 件装（22.9元），单日走 100 单即可收获 700~900 元净毛利。" }
+        ],
+        budgetGuide: "每日预算建议 100 ~ 200 元，起步备用金 300 ~ 500 元。保本 ROI 仅 1.8 ~ 2.0，高出价极易拉起大盘真实权重。"
+      },
+      custom: {
+        title: "✏️ 自主自定义模式 · 玩法指引",
+        themeColor: "#94a3b8",
+        badge: "纯手工自由录入定价与立减券",
+        summary: "系统不干预您的定价逻辑，完全依据您手工输入的拼单售价、立减券、折扣率与件数，实时核算毛利率、广告花费与保本投产比。",
+        sopSteps: [
+          { phase: "1. 输入真实供货底价", desc: "在表格或单品计算器中输入真实的商品单件成本、快递与包材费。" },
+          { phase: "2. 自主推演售价", desc: "输入您心中的目标售价与优惠券，观察计算出的保本 ROI 与扣除广告后净利润。" },
+          { phase: "3. 投产比模拟校验", desc: "在'实际全站设定 ROAS'输入测试值，评估不同出价激烈程度下的店铺日度与月度盈利大盘。" }
+        ],
+        budgetGuide: "根据您个人的货盘特色、毛利空间与抗风险预算自主规划投放节奏。"
+      }
+    };
+
+    function updateAlgoSopTooltip() {
+      const sop = ALGORITHM_SOP_GUIDES[currentPricingAlgoMode] || ALGORITHM_SOP_GUIDES.golden;
+      const container = document.getElementById('algoSopTooltipContent');
+      if (!container) return;
+
+      let stepsHtml = sop.sopSteps.map(s => `
+        <div style="background: rgba(30, 41, 59, 0.7); border-left: 3px solid ${sop.themeColor}; padding: 8px 12px; border-radius: 4px; margin-bottom: 8px;">
+          <div style="font-weight: 700; font-size: 12px; color: ${sop.themeColor}; margin-bottom: 2px;">${s.phase}</div>
+          <div style="font-size: 11px; color: #cbd5e1; line-height: 1.45;">${s.desc}</div>
+        </div>
+      `).join('');
+
+      container.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #334155; padding-bottom: 8px;">
+          <div style="font-weight: 800; font-size: 14px; color: #f8fafc; display: flex; align-items: center; gap: 6px;">
+            <span>${sop.title}</span>
+          </div>
+          <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: ${sop.themeColor}; border: 1px solid ${sop.themeColor}; font-size: 10px;">${sop.badge}</span>
+        </div>
+        <div style="font-size: 11.5px; color: #94a3b8; margin-bottom: 12px; line-height: 1.5; background: rgba(15, 23, 42, 0.6); padding: 8px 10px; border-radius: 6px;">
+          ${sop.summary}
+        </div>
+        <div style="font-weight: 700; font-size: 12px; color: #e2e8f0; margin-bottom: 8px;">🎯 阶段推操 SOP 路线：</div>
+        <div style="max-height: 240px; overflow-y: auto; padding-right: 4px;">
+          ${stepsHtml}
+        </div>
+        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #334155; font-size: 11px; color: #f59e0b; display: flex; align-items: flex-start; gap: 6px;">
+          <span>💰</span>
+          <span><strong>预算分配策略：</strong>${sop.budgetGuide}</span>
+        </div>
+      `;
+    }
+
+    // 初始化悬浮监听事件
+    function initAlgoSopHoverEvents() {
       const badge = document.getElementById('goldenAlgoStatusBadge');
-      const slider = document.getElementById('goldenToggleSlider');
-      const dot = document.getElementById('goldenToggleDot');
+      const tooltip = document.getElementById('algoSopTooltip');
+      if (!badge || !tooltip) return;
 
-      if (useGoldenAlgorithm) {
+      badge.addEventListener('mouseenter', () => {
+        updateAlgoSopTooltip();
+        tooltip.style.display = 'block';
+      });
+
+      badge.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+      });
+
+      tooltip.addEventListener('mouseenter', () => {
+        tooltip.style.display = 'block';
+      });
+
+      tooltip.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+      });
+    }
+
+    function changePricingAlgorithmMode() {
+      const select = document.getElementById('pricingAlgorithmSelect');
+      currentPricingAlgoMode = select.value;
+      const badge = document.getElementById('goldenAlgoStatusBadge');
+      const badgeText = document.getElementById('algoBadgeText') || badge;
+
+      if (currentPricingAlgoMode === 'golden') {
         badge.className = "badge badge-success";
-        badge.innerText = "黄金算法开启";
-        slider.style.backgroundColor = "#10b981";
-        dot.style.left = "22px";
-        showToast("💎 黄金 SKU 矩阵算法已开启，拼单售价与立减券全自动智能倒算", "success");
-      } else {
+        if (badgeText !== badge) badgeText.innerText = "💎 经典黄金4阶梯"; else badge.innerText = "💎 经典黄金4阶梯 📖 玩法SOP ℹ️";
+        showToast("💎 已切换为【经典黄金 4 阶梯算法】：适合中高溢价常规商品", "success");
+      } else if (currentPricingAlgoMode === 'ultra_low_cost') {
+        badge.className = "badge badge-primary";
+        if (badgeText !== badge) badgeText.innerText = "⚡ 极致性价比走量"; else badge.innerText = "⚡ 极致性价比走量 📖 玩法SOP ℹ️";
+        showToast("⚡ 已切换为【极致性价比自然流算法】：专为≤2元货品定制，压低客单控退款，打爆自然流", "info");
+      } else if (currentPricingAlgoMode === 'marginal_logistics') {
         badge.className = "badge badge-warning";
-        badge.innerText = "自定义模式";
-        slider.style.backgroundColor = "#64748b";
-        dot.style.left = "3px";
-        showToast("✏️ 已切换为【自主自定义模式】，拼单售价与立减券完全由您自由输入设定", "info");
+        if (badgeText !== badge) badgeText.innerText = "📦 边际运费多件套"; else badge.innerText = "📦 边际运费多件套 📖 玩法SOP ℹ️";
+        showToast("📦 已切换为【边际运费多件套算法】：利用快递首重边际零成本均摊，做多件装拉大毛利开车", "info");
+      } else {
+        badge.className = "badge badge-outline";
+        if (badgeText !== badge) badgeText.innerText = "✏️ 自主自定义模式"; else badge.innerText = "✏️ 自主自定义模式 📖 玩法SOP ℹ️";
+        showToast("✏️ 已切换为【自主自定义模式】：拼单售价与立减券完全由您自由输入设定", "info");
       }
 
-      // 若重新开启算法，触发一次矩阵重算
-      if (useGoldenAlgorithm) {
-        const uCost = parseFloat(document.getElementById('singleUnitCost').value) || 0.94;
-        batchSkusList.forEach((sku, idx) => {
-          const calcRes = calculateGoldenSkuPricing(parseInt(sku.sku_qty) || 1, uCost, sku.sku_name || '', idx);
+      updateAlgoSopTooltip();
+
+      // 若非自定义模式，触发全店多 SKU 矩阵大盘与单品重算
+      if (currentPricingAlgoMode !== 'custom') {
+        recalculateBatchMatrix(false);
+      }
+    }
+
+    // 主动触发全盘重算函数 (支持按钮点击或算法切换调用)
+    function recalculateBatchMatrix(showNotice = true) {
+      const uCost = parseFloat(document.getElementById('singleUnitCost').value) || 0.94;
+      
+      if (currentPricingAlgoMode === 'custom') {
+        renderBatchPricingTable();
+        runSinglePricingCalc();
+        if (showNotice) showToast("✏️ 自定义模式下已根据当前输入重新核算全盘利润与投产比！", "info");
+        return;
+      }
+
+      batchSkusList.forEach((sku, idx) => {
+        const cost = parseFloat(sku.unit_cost) || uCost;
+        const calcRes = dispatchSkuPricingAlgorithm(parseInt(sku.sku_qty) || 1, cost, sku.sku_name || '', idx);
+        if (calcRes) {
           sku.selling_price = calcRes.selling_price;
           sku.coupon_amount = calcRes.coupon_amount;
-        });
-        renderBatchPricingTable();
+        }
+      });
+      
+      // 同步更新单品快捷算价计算器的预设
+      const singleQty = parseInt(document.getElementById('singleSkuQty').value) || 1;
+      const singleName = document.getElementById('singleSkuName').value || '';
+      const singleCalc = dispatchSkuPricingAlgorithm(singleQty, uCost, singleName, 0);
+      if (singleCalc) {
+        document.getElementById('singleSellingPrice').value = singleCalc.selling_price;
+        document.getElementById('singleCoupon').value = singleCalc.coupon_amount;
       }
+
+      renderBatchPricingTable();
+      runSinglePricingCalc();
+
+      if (showNotice) {
+        const algoLabels = {
+          'golden': '💎 经典黄金 4 阶梯算法',
+          'ultra_low_cost': '⚡ 极致性价比自然流算法',
+          'marginal_logistics': '📦 边际运费多件套算法'
+        };
+        showToast(`🔄 已按【${algoLabels[currentPricingAlgoMode] || '当前算法'}】全量重算全店 SKU 矩阵定价与利润！`, "success");
+      }
+    }
+
+    // 算法调度器
+    function dispatchSkuPricingAlgorithm(qty, uCost, skuName, idx) {
+      if (currentPricingAlgoMode === 'ultra_low_cost') {
+        return calculateUltraLowCostPricing(qty, uCost, skuName, idx);
+      } else if (currentPricingAlgoMode === 'marginal_logistics') {
+        return calculateMarginalLogisticsPricing(qty, uCost, skuName, idx);
+      } else if (currentPricingAlgoMode === 'custom') {
+        return null;
+      }
+      return calculateGoldenSkuPricing(qty, uCost, skuName, idx);
+    }
+
+    // 算法 1：极致性价比自然流跑量算法 (≤2元低价卡位/9.9以下包邮/极低退款/打爆自然搜推)
+    function calculateUltraLowCostPricing(qty, uCost, skuName, idx) {
+      const express = parseFloat(document.getElementById('calcExpressFee').value) || 1.8;
+      const material = parseFloat(document.getElementById('calcMaterialFee').value) || 0.1;
+      const labor = parseFloat(document.getElementById('calcLaborFee').value) || 0.25;
+      const refund = (parseFloat(document.getElementById('calcRefundRate').value) || 5) / 100; // 低客单自然流退款率低
+      const insurance = parseFloat(document.getElementById('calcInsuranceFee').value) || 0;
+      const commVal = document.getElementById('calcCommissionRate').value;
+      const commission = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
+
+      const fixedPackCost = express + material + labor + insurance;
+      const deductFactor = Math.max(0.1, 1.0 - refund - commission);
+
+      let sellingPrice = 3.9;
+      let couponAmount = 0.5;
+
+      if (qty === 1) {
+        // 单件引流微利卡位 (0.3~0.6元微利，控在 3.9 ~ 5.9 元心智爆款带)
+        const raw = ((uCost * 1 + fixedPackCost) + 0.5) / deductFactor;
+        sellingPrice = Math.max(3.9, Math.min(6.9, Math.round(raw * 10) / 10));
+        couponAmount = 0.5;
+      } else if (qty === 2) {
+        // 2件装跑量款 (1件快递费省下，单件仅加货本+0.8元微利)
+        const raw = ((uCost * 2 + fixedPackCost) + 1.2) / deductFactor;
+        sellingPrice = Math.max(5.9, Math.min(8.9, Math.round(raw * 10) / 10));
+        couponAmount = 1.0;
+      } else if (qty === 3) {
+        // 3件装破零放量
+        const raw = ((uCost * 3 + fixedPackCost) + 2.0) / deductFactor;
+        sellingPrice = Math.max(7.9, Math.min(11.9, Math.round(raw * 10) / 10));
+        couponAmount = 1.5;
+      } else {
+        // 4件及以上大件打包 (单件利润 0.8元递增)
+        const raw = ((uCost * qty + fixedPackCost) + (qty * 0.8)) / deductFactor;
+        sellingPrice = Math.round(raw * 10) / 10;
+        couponAmount = Math.min(4.0, Math.round(qty * 0.5 * 10) / 10);
+      }
+
+      return { selling_price: sellingPrice, coupon_amount: couponAmount };
+    }
+
+    // 算法 2：边际运费多件套阶梯算法 (≤2元低成本，利用运费首重均摊，做多件装拉出8~12元高毛利安全开车)
+    function calculateMarginalLogisticsPricing(qty, uCost, skuName, idx) {
+      const express = parseFloat(document.getElementById('calcExpressFee').value) || 1.8;
+      const material = parseFloat(document.getElementById('calcMaterialFee').value) || 0.1;
+      const labor = parseFloat(document.getElementById('calcLaborFee').value) || 0.25;
+      const refund = (parseFloat(document.getElementById('calcRefundRate').value) || 10) / 100;
+      const insurance = parseFloat(document.getElementById('calcInsuranceFee').value) || 0;
+      const commVal = document.getElementById('calcCommissionRate').value;
+      const commission = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
+
+      const fixedPackCost = express + material + labor + insurance;
+      const deductFactor = Math.max(0.1, 1.0 - refund - commission);
+
+      let sellingPrice = 4.9;
+      let couponAmount = 1.0;
+
+      if (qty === 1) {
+        // 1件装作为限购引流锚点 (不承担开车主力，展现全网底价)
+        const raw = ((uCost * 1 + fixedPackCost) + 0.8) / deductFactor;
+        sellingPrice = Math.max(4.9, Math.round(raw * 10) / 10);
+        couponAmount = 1.0;
+      } else if (qty === 2) {
+        // 2件装过渡款
+        const raw = ((uCost * 2 + fixedPackCost) + 3.8) / deductFactor;
+        sellingPrice = Math.max(8.9, Math.round(raw * 10) / 10);
+        couponAmount = 2.0;
+      } else if (qty === 3) {
+        // 3件装【核心开车主推款】(买家折合每件仅4.3元不退货，商家毛利达7~9元，保本ROI降至1.8~2.0)
+        const raw = ((uCost * 3 + fixedPackCost) + 6.8) / deductFactor;
+        sellingPrice = Math.max(12.9, Math.min(14.9, Math.round(raw * 10) / 10));
+        couponAmount = 2.0;
+      } else if (qty >= 4) {
+        // 4件/5件装【大堆头利润收割款】
+        const targetProfit = 9.0 + (qty - 4) * 2.5;
+        const raw = ((uCost * qty + fixedPackCost) + targetProfit) / deductFactor;
+        sellingPrice = Math.round(raw * 10) / 10;
+        couponAmount = Math.min(5.0, 3.0 + (qty - 4) * 1.0);
+      }
+
+      return { selling_price: sellingPrice, coupon_amount: couponAmount };
     }
 
     // 算价表相关 JS
@@ -1417,8 +1685,8 @@
         const userCouponVal = document.getElementById('singleCoupon').value;
         let finalCoupon = userCouponVal !== '' ? parseFloat(userCouponVal) : 0;
 
-        // 黄金 4 阶梯算法提供智能建议兜底
-        const singleCalcRes = calculateGoldenSkuPricing(currentQty, currentUnitCost, currentSkuName, 0);
+        // 算法调度器提供智能建议兜底
+        const singleCalcRes = dispatchSkuPricingAlgorithm(currentQty, currentUnitCost, currentSkuName, 0) || calculateGoldenSkuPricing(currentQty, currentUnitCost, currentSkuName, 0);
         if (finalSellingPrice <= 0) {
           finalSellingPrice = singleCalcRes.selling_price;
           document.getElementById('singleSellingPrice').value = finalSellingPrice;
@@ -1620,35 +1888,40 @@
       if (batchSkusList[idx]) {
         batchSkusList[idx][field] = value;
 
-        // 若手动修改了【引流款 (1件装)】的拼单售价 (如由 8.9 改为 13)，若开启黄金算法全自动触发联动刷新其他所有关联 SKU 的售价倍率上限
-        if (useGoldenAlgorithm && field === 'selling_price' && parseInt(batchSkusList[idx].sku_qty) === 1) {
-          const newAttrPrice = parseFloat(value) || 8.9;
+        // 若手动修改了【引流款 (1件装)】的拼单售价 (如由 8.9 改为 13)，若处于自动算法模式全自动触发联动刷新其他所有关联 SKU
+        if (currentPricingAlgoMode !== 'custom' && field === 'selling_price' && parseInt(batchSkusList[idx].sku_qty) === 1) {
           batchSkusList.forEach((sku, i) => {
             if (i !== idx && parseInt(sku.sku_qty) > 1) {
-              const calcRes = calculateGoldenSkuPricing(parseInt(sku.sku_qty) || 1, parseFloat(sku.unit_cost) || 0, sku.sku_name || '', i);
-              sku.selling_price = calcRes.selling_price;
-              sku.coupon_amount = calcRes.coupon_amount;
+              const calcRes = dispatchSkuPricingAlgorithm(parseInt(sku.sku_qty) || 1, parseFloat(sku.unit_cost) || 0, sku.sku_name || '', i);
+              if (calcRes) {
+                sku.selling_price = calcRes.selling_price;
+                sku.coupon_amount = calcRes.coupon_amount;
+              }
             }
           });
         }
 
-        // 若调整了包含件数(sku_qty) 或 单件成本(unit_cost)，在开启黄金算法时全自动倒算拼单售价与立减券
-        if (useGoldenAlgorithm && (field === 'sku_qty' || field === 'unit_cost')) {
+        // 若调整了包含件数(sku_qty) 或 单件成本(unit_cost)，在自动算法模式下全自动倒算拼单售价与立减券
+        if (currentPricingAlgoMode !== 'custom' && (field === 'sku_qty' || field === 'unit_cost')) {
           const qty = parseInt(batchSkusList[idx].sku_qty) || 1;
           const uCost = parseFloat(batchSkusList[idx].unit_cost) || 0;
           const skuName = batchSkusList[idx].sku_name || '';
 
-          const calcRes = calculateGoldenSkuPricing(qty, uCost, skuName, idx);
-          batchSkusList[idx].selling_price = calcRes.selling_price;
-          batchSkusList[idx].coupon_amount = calcRes.coupon_amount;
+          const calcRes = dispatchSkuPricingAlgorithm(qty, uCost, skuName, idx);
+          if (calcRes) {
+            batchSkusList[idx].selling_price = calcRes.selling_price;
+            batchSkusList[idx].coupon_amount = calcRes.coupon_amount;
+          }
 
           // 如果修改的是引流款的件数或成本，同步联动其他高件数 SKU
           if (qty === 1) {
             batchSkusList.forEach((sku, i) => {
               if (i !== idx && parseInt(sku.sku_qty) > 1) {
-                const subCalc = calculateGoldenSkuPricing(parseInt(sku.sku_qty) || 1, parseFloat(sku.unit_cost) || 0, sku.sku_name || '', i);
-                sku.selling_price = subCalc.selling_price;
-                sku.coupon_amount = subCalc.coupon_amount;
+                const subCalc = dispatchSkuPricingAlgorithm(parseInt(sku.sku_qty) || 1, parseFloat(sku.unit_cost) || 0, sku.sku_name || '', i);
+                if (subCalc) {
+                  sku.selling_price = subCalc.selling_price;
+                  sku.coupon_amount = subCalc.coupon_amount;
+                }
               }
             });
           }
@@ -2101,14 +2374,30 @@
         </div>
       `;
 
-      // 7. 小碎步拖价全景
+      // 7. 小碎步拖价全景 / 14天进阶SOP
       const roiCont = document.getElementById('roiStepContainer');
-      const roadmap = skuMatrix.ad_strategy.roi_roadmap;
-      roiCont.innerHTML = `
-        <div style="margin-bottom:10px;"><strong style="color:#f87171;">【阶段1：第1-3天 强吃曝光破零】</strong><br/>${roadmap["第1-3天_强吃曝光破零"]}</div>
-        <div style="margin-bottom:10px;"><strong style="color:#fbbf24;">【阶段2：第4-7天 稳出单累评】</strong><br/>${roadmap["第4-7天_稳出单累评"]}</div>
-        <div><strong style="color:#34d399;">【阶段3：第8-14天 拖价撬动自然流】</strong><br/>${roadmap["第8-14天_拖价撬动自然流"]}</div>
-      `;
+      const roadmap = (skuMatrix && skuMatrix.ad_strategy && skuMatrix.ad_strategy.roi_roadmap) ? skuMatrix.ad_strategy.roi_roadmap : {};
+      const roadmapEntries = Object.entries(roadmap);
+
+      if (roadmapEntries.length > 0) {
+        const stageColors = ['#f87171', '#fbbf24', '#34d399', '#60a5fa'];
+        roiCont.innerHTML = roadmapEntries.map(([key, val], idx) => {
+          const color = stageColors[idx % stageColors.length];
+          const displayKey = key.replace(/_/g, ' ');
+          return `
+            <div style="margin-bottom:${idx === roadmapEntries.length - 1 ? '0' : '12px'}; background:#090d16; padding:10px 14px; border-radius:8px; border-left:3px solid ${color};">
+              <div style="color:${color}; font-weight:bold; margin-bottom:4px;">【阶段 ${idx + 1}：${displayKey}】</div>
+              <div style="color:#e2e8f0; line-height:1.6;">${val || '暂无说明'}</div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        roiCont.innerHTML = `
+          <div style="margin-bottom:10px;"><strong style="color:#f87171;">【阶段1：第1-3天 强吃曝光破零】</strong><br/>建议设定较低全站目标ROI破零，低保本点快速冲开曝光池。</div>
+          <div style="margin-bottom:10px;"><strong style="color:#fbbf24;">【阶段2：第4-7天 稳出单累评】</strong><br/>逐步回调全站目标ROI至保本点，沉淀高质量买家好评。</div>
+          <div><strong style="color:#34d399;">【阶段3：第8-14天 拖价撬动自然流】</strong><br/>每天早晨小碎步+0.05~0.1微调拖价，推动全站免费自然搜推爆发。</div>
+        `;
+      }
 
       // 8. 全盘无缝同步：将解析出的全量真实对标 SKU 明细全量同步至 TAB 2 “全店多 SKU 矩阵算价看板”
       const syncList = (data.interception_strategy && data.interception_strategy.sku_comparison_list && data.interception_strategy.sku_comparison_list.length > 0)
