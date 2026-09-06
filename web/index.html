@@ -1379,15 +1379,15 @@
           newCouponAmount = 2.0;
         }
       } else {
-        // qty >= 3 时: 作为高客单价大堆头，根据件数梯度与 4.5 倍率精算，精准输出用户预期的 41.8元 售价
-        const tierAddOn = 18.0 + Math.max(0, (qty - 3) * 4.3);
+        // qty >= 3 时：以黄金 4 阶梯逻辑进行合理阶梯算价，平滑增长避免突破天花板
+        const tierAddOn = 10.0 + (qty - 3) * 2.5;
         const costBasedPrice = Math.round((((uCost * qty + fixedPackCost) + tierAddOn) / deductFactor) * 10) / 10;
-        const ratioBasedPrice = Math.round(currentAttrPrice * (3.03 + Math.max(0, (qty - 3) * 0.09)) * 10) / 10;
+        const ratioBasedPrice = Math.round(currentAttrPrice * (3.03 + (qty - 3) * 0.3) * 10) / 10;
         const profitPrice = Math.max(ratioBasedPrice, costBasedPrice);
 
-        const maxSafePrice = Math.round(currentAttrPrice * 4.2 * 10) / 10;
+        const maxSafePrice = Math.round(currentAttrPrice * 4.4 * 10) / 10;
         newSellingPrice = Math.min(profitPrice, maxSafePrice);
-        newCouponAmount = 4.0;
+        newCouponAmount = Math.min(6.0, 4.0 + (qty - 3) * 1.0);
       }
 
       return { selling_price: newSellingPrice, coupon_amount: newCouponAmount };
