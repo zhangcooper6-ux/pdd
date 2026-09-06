@@ -398,23 +398,23 @@ class PddProductAnalyzer:
             if orig_price > 0:
                 valid_prices.append(orig_price)
             
-            # 截流定价逻辑：以黄金矩阵为收益地板，以对标原价降维折扣为拉满 CTR/CVR 的截流天花板
+            # 截流定价逻辑：精准比对对标原价，做 0.6 ~ 2.6 元的降维截流降价
             if orig_price <= 4.0:
-                my_price = max(golden_attr_p, round(orig_price - 0.4, 2))
-                action_tag = "黄金引流卡位 (CTR)"
+                my_price = max(2.5, round(orig_price - 0.4, 2))
+                action_tag = "极致低价卡位 (CTR)"
             elif orig_price <= 10.0:
-                my_price = max(round(base_cost*2 + fixed_pack + 1.5, 2), round(orig_price - 0.6, 2))
+                my_price = max(3.5, round(orig_price - 0.6, 2))
                 action_tag = "买1送1高性价比 (CVR)"
             elif orig_price <= 25.0:
-                # 若对方价格较高，优先引入黄金 2.36x 倍率防冲高
-                my_price = min(round(orig_price - 1.2, 2), golden_hero_p)
-                action_tag = "黄金高溢价截流 (高ROI)"
+                # 针对 23.57 元等低价卡位，便宜 0.67 元形成搜索列表价格优势
+                my_price = max(4.9, round(orig_price - 0.67, 2))
+                action_tag = "低价卡位强截流 (高CTR)"
             else:
-                # 针对高客单价 (如 28~34元)，以黄金 3.03x 矩阵做锚定保护
-                my_price = max(golden_bulk_p, round(orig_price - 2.6, 2))
-                action_tag = "大堆头防比价截流 (高利润)"
+                # 针对 28~34 元的高客单价，做 1.20 ~ 2.60 元的深度降维折扣
+                my_price = max(19.9, round(orig_price - 2.60, 2))
+                action_tag = "高客单强压截流 (高利润)"
 
-            # 安全倍率拦截：避免跨 SKU 突破 4.5 倍率引发拼多多风控限流
+            # 安全倍率拦截：避免跨 SKU 突破 4.4 倍率引发拼多多风控限流
             if len(valid_prices) > 1:
                 min_p = min(valid_prices)
                 if my_price > min_p * 4.4:
