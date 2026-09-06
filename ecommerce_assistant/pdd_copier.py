@@ -328,7 +328,8 @@ class PddProductAnalyzer:
             }
         ]
 
-        break_even_roi = round(sku2_price / m2, 2) if m2 > 0 else 99.0
+        # 保持保本 ROI 的一致性取值：优先使用截流算法中测算的真实主力爆款保本 ROI，保持卡片与全盘数据一致
+        break_even_roi = my_breakeven_roi if 'my_breakeven_roi' in locals() else (round(sku2_price / m2, 2) if m2 > 0 else 99.0)
 
         activity_plan = {
             "forbidden_rules": [
@@ -460,14 +461,16 @@ class PddProductAnalyzer:
         my_hero_price = max(4.9, round(hero_target_price - 2.61, 2))
         my_bulk_price = max(7.9, round(hero_target_price * 1.1, 2))
 
-        # 对方估计保本 ROI
+        # 3. 截流精算与真实主力爆款保本 ROI 计算
         benchmark_margin = hero_target_price - (base_cost * 2 + fixed_pack) - (hero_target_price * refund_rate) - (hero_target_price * platform_commission_rate)
         target_est_roi = round(hero_target_price / max(0.1, benchmark_margin), 2)
 
-        # 我方低投产强压出价
         my_hero_margin = my_hero_price - (base_cost * 2 + fixed_pack) - (my_hero_price * refund_rate) - (my_hero_price * platform_commission_rate)
         my_breakeven_roi = round(my_hero_price / max(0.1, my_hero_margin), 2)
         target_est_bid = round(hero_target_price / target_est_roi, 2)
+
+        # 动态将测算出的真实主力爆款保本 ROI 覆盖至黄金 SKU 矩阵汇总数据中
+        golden_sku_matrix["break_even_roi"] = my_breakeven_roi
         my_bid_override = round(my_hero_price / (my_breakeven_roi * 0.8), 2)
 
         # 动态捕捉真实引流款 SKU (最低价项) 与真实主力爆款 SKU (价格居中/带有2个装/主力关键词)
