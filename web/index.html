@@ -897,6 +897,7 @@
                 <option value="golden" selected>💎 经典黄金 4 阶梯算法 (常规中高溢价/高毛利)</option>
                 <option value="ultra_low_cost">⚡ 极致性价比自然流算法 (≤2元低价卡位/9.9包邮/破零)</option>
                 <option value="mid_cost_natural_flow">🔥 中客单性价比自然流算法 (8~15元高质/防亏起盘)</option>
+                <option value="mid_cost_high_margin">👑 中客单高溢价高转化算法 (8~15元强付费爆量/大毛利破局)</option>
                 <option value="marginal_logistics">📦 边际运费多件套算法 (≤2元运费均摊/多件高毛利开车)</option>
                 <option value="custom">✏️ 自主自定义模式 (纯手工自由输入)</option>
               </select>
@@ -1356,6 +1357,19 @@
         ],
         budgetGuide: "单款启动备用金控制在 250 ~ 350 元。微付费测试消耗达 50 元若无成交即检查主图/详情页品质感。保本 ROI 约 2.2 ~ 2.8，退款率预估 8%~12%。"
       },
+      mid_cost_high_margin: {
+        title: "👑 中客单高溢价高转化算法 · 玩法 SOP 与预算策略",
+        themeColor: "#8b5cf6",
+        badge: "专为 8~15 元好物强付费爆量定制",
+        summary: "视觉高奢重塑+主推款大毛利破局！单件基础款标 19.9 元作价格锚点，主力款标 29.9 元（到手 25.9）拉出 15~18 元充沛毛利，保本 ROI 压至 1.6~1.8，全站极限出价 15~18 元强吃全网第一梯队大曝光！",
+        sopSteps: [
+          { phase: "1. 视觉溢价重塑与破零 (第1-3天)", desc: "主图前3秒深色轻奢微距质感+质检贴纸，老客破零 5 笔带20秒开箱视频好评，买家秀突出'比地摊货强太多'。" },
+          { phase: "2. 强付费高出价大曝光 (第4-7天)", desc: "全站推广日预算 100~200 元，目标 ROI 设在 1.60~1.80 保本线极限出价（单单出价 15~18 元），霸占类目大词搜索前三位！" },
+          { phase: "3. 增值服务与防退护城河 (第8-14天)", desc: "赠送运费险+1年换新卡，包裹内放手写感谢信与贴心微配件，牢牢锁住退款率在 10% 以内。" },
+          { phase: "4. 小碎步拖价放大纯利 (第15天+)", desc: "累积 300+ 基础销量后，每日微抬 ROI 0.05~0.10，拖价至 2.30~2.60，单日百单稳收 800~1500 元纯净利润！" }
+        ],
+        budgetGuide: "单款启动备用金 600 ~ 900 元（强付费出价大）。保本 ROI 仅 1.60 ~ 1.85，出价优势极强，追求单日百单、月入过万的高客单打法。"
+      },
       marginal_logistics: {
         title: "📦 边际运费多件套算法 · 玩法 SOP 与预算策略",
         themeColor: "#f59e0b",
@@ -1458,6 +1472,10 @@
         badge.className = "badge badge-danger";
         if (badgeText !== badge) badgeText.innerText = "🔥 中客单性价比自然流"; else badge.innerText = "🔥 中客单性价比自然流 📖 玩法SOP ℹ️";
         showToast("🔥 已切换为【中客单性价比自然流算法】：专为 8~15元成本货品定制，真实保本卡位+多件套做大自然流", "info");
+      } else if (currentPricingAlgoMode === 'mid_cost_high_margin') {
+        badge.className = "badge badge-warning";
+        if (badgeText !== badge) badgeText.innerText = "👑 中客单高溢价高转化"; else badge.innerText = "👑 中客单高溢价高转化 📖 玩法SOP ℹ️";
+        showToast("👑 已切换为【中客单高溢价高转化算法】：专为 8~15元好物定制，视觉重塑+强付费高出价破局", "success");
       } else if (currentPricingAlgoMode === 'marginal_logistics') {
         badge.className = "badge badge-warning";
         if (badgeText !== badge) badgeText.innerText = "📦 边际运费多件套"; else badge.innerText = "📦 边际运费多件套 📖 玩法SOP ℹ️";
@@ -1524,6 +1542,8 @@
         return calculateUltraLowCostPricing(qty, uCost, skuName, idx);
       } else if (currentPricingAlgoMode === 'mid_cost_natural_flow') {
         return calculateMidCostNaturalFlowPricing(qty, uCost, skuName, idx);
+      } else if (currentPricingAlgoMode === 'mid_cost_high_margin') {
+        return calculateMidCostHighMarginPricing(qty, uCost, skuName, idx);
       } else if (currentPricingAlgoMode === 'marginal_logistics') {
         return calculateMarginalLogisticsPricing(qty, uCost, skuName, idx);
       } else if (currentPricingAlgoMode === 'custom') {
@@ -1617,7 +1637,50 @@
       return { selling_price: sellingPrice, coupon_amount: couponAmount };
     }
 
-    // 算法 3：边际运费多件套阶梯算法 (≤2元低成本，利用运费首重均摊，做多件装拉出8~12元高毛利安全开车)
+    // 算法 3：中客单高溢价高转化算法 (针对 8~15 元好物，视觉溢价重塑+主力款拉大毛利至15~22元+强付费高出价破局)
+    function calculateMidCostHighMarginPricing(qty, uCost, skuName, idx) {
+      const express = parseFloat(document.getElementById('calcExpressFee').value) || 1.8;
+      const material = parseFloat(document.getElementById('calcMaterialFee').value) || 0.1;
+      const labor = parseFloat(document.getElementById('calcLaborFee').value) || 0.25;
+      const refund = (parseFloat(document.getElementById('calcRefundRate').value) || 12) / 100;
+      const insurance = parseFloat(document.getElementById('calcInsuranceFee').value) || 0;
+      const commVal = document.getElementById('calcCommissionRate').value;
+      const commission = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
+
+      const fixedPackCost = express + material + labor + insurance;
+      const deductFactor = Math.max(0.1, 1.0 - refund - commission);
+
+      let sellingPrice = 29.9;
+      let couponAmount = 3.0;
+
+      if (qty === 1) {
+        // 1件基础款 (价格对比锚点，预留 7~9 元毛利，售价在 19.9 元左右)
+        const raw = ((uCost * 1 + fixedPackCost) + 7.5) / deductFactor;
+        sellingPrice = Math.max(19.9, Math.round(raw * 10) / 10);
+        couponAmount = 2.0;
+      } else if (qty === 2) {
+        // 2件套/买一送一/升级旗舰版 (核心主推款！拉出 15~18 元高毛利，拼单价 29.9~35.9 元，搭 4 元券到手 25.9~31.9 元，保本 ROI 降至 1.6~1.8)
+        const raw = ((uCost * 2 + fixedPackCost) + 15.5) / deductFactor;
+        sellingPrice = Math.max(29.9, Math.round(raw * 10) / 10);
+        couponAmount = 4.0;
+      } else if (qty === 3) {
+        // 3件尊享大礼包款 (毛利拉到 25.0 元以上，配合 6 元大额券收割高客单)
+        const targetProfit = 25.0;
+        const raw = ((uCost * 3 + fixedPackCost) + targetProfit) / deductFactor;
+        sellingPrice = Math.max(45.9, Math.round(raw * 10) / 10);
+        couponAmount = 6.0;
+      } else {
+        // 4件及以上 (单件毛利递增 8 元)
+        const targetProfit = 25.0 + (qty - 3) * 8.0;
+        const raw = ((uCost * qty + fixedPackCost) + targetProfit) / deductFactor;
+        sellingPrice = Math.round(raw * 10) / 10;
+        couponAmount = Math.min(10.0, 6.0 + (qty - 3) * 2.0);
+      }
+
+      return { selling_price: sellingPrice, coupon_amount: couponAmount };
+    }
+
+    // 算法 4：边际运费多件套阶梯算法 (≤2元低成本，利用运费首重均摊，做多件装拉出8~12元高毛利安全开车)
     function calculateMarginalLogisticsPricing(qty, uCost, skuName, idx) {
       const express = parseFloat(document.getElementById('calcExpressFee').value) || 1.8;
       const material = parseFloat(document.getElementById('calcMaterialFee').value) || 0.1;
