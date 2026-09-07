@@ -314,6 +314,16 @@ async def export_pdd_import_file(data: Dict[str, Any]):
     df.to_csv(export_path, index=False, encoding="utf-8-sig")
     return FileResponse(path=export_path, filename="pdd_goods_upload.csv", media_type="text/csv")
 
+@app.get("/api/readme")
+async def get_readme_content():
+    """获取本地 README.md 内容供前端在线 Markdown 阅读器渲染"""
+    readme_path = os.path.join(BASE_DIR, "README.md")
+    if not os.path.exists(readme_path):
+        raise HTTPException(status_code=404, detail="README.md 文件不存在")
+    with open(readme_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    return {"success": True, "content": content}
+
 @app.get("/api/pdd/download-sop")
 async def download_pdd_sop_doc():
     """下载拼多多爆款 SOP 全景指南 Markdown 文档"""
