@@ -2821,6 +2821,45 @@
       });
     }
 
+    // 轻量级原生 Markdown 解析兜底解析器 (零外部 CDN 依赖)
+    function parseMarkdownToHtml(md) {
+      if (!md) return '';
+      if (window.marked && typeof window.marked.parse === 'function') {
+        try {
+          return marked.parse(md);
+        } catch (e) {
+          console.warn('marked parse error, falling back to basic parser:', e);
+        }
+      }
+      // 原生正则解析
+      let html = md
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      // 标题
+      html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
+      html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+      html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+      html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+      // 分割线
+      html = html.replace(/^---$/gim, '<hr/>');
+
+      // 粗体 & 行内代码
+      html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+      html = html.replace(/`([^`]+)`/gim, '<code>$1</code>');
+
+      // 引用块
+      html = html.replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>');
+
+      // 简单列表与换行
+      html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
+      html = html.replace(/\n\n/gim, '<br/><br/>');
+
+      return html;
+    }
+
     // README 在线 Markdown 预览逻辑
     let cachedReadmeMarkdown = null;
     async function loadReadmeContent(forceRefresh = false) {
@@ -2829,12 +2868,12 @@
       if (!container) return;
 
       if (cachedReadmeMarkdown && !forceRefresh) {
-        loading.style.display = 'none';
+        if (loading) loading.style.display = 'none';
         container.style.display = 'block';
         return;
       }
 
-      loading.style.display = 'block';
+      if (loading) loading.style.display = 'block';
       container.style.display = 'none';
 
       try {
@@ -2842,19 +2881,15 @@
         const data = await res.json();
         if (data.success && data.content) {
           cachedReadmeMarkdown = data.content;
-          if (window.marked) {
-            container.innerHTML = marked.parse(data.content);
-          } else {
-            container.innerHTML = `<pre style="white-space: pre-wrap;">${data.content}</pre>`;
-          }
-          loading.style.display = 'none';
+          container.innerHTML = parseMarkdownToHtml(data.content);
+          if (loading) loading.style.display = 'none';
           container.style.display = 'block';
         } else {
-          loading.innerHTML = '<div style="color:#ef4444;">❌ 载入失败：' + (data.detail || '无法读取文件') + '</div>';
+          if (loading) loading.innerHTML = '<div style="color:#ef4444;">❌ 载入失败：' + (data.detail || '无法读取文件') + '</div>';
         }
       } catch (err) {
         console.error("README 载入失败:", err);
-        loading.innerHTML = '<div style="color:#ef4444;">❌ 载入网络异常: ' + err.message + '</div>';
+        if (loading) loading.innerHTML = '<div style="color:#ef4444;">❌ 载入网络异常: ' + err.message + '</div>';
       }
     }
 
