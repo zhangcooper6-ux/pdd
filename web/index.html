@@ -568,6 +568,11 @@
   <!-- Toast 消息节点 -->
   <div class="toast-container" id="toastContainer"></div>
 
+  <!-- 全局顶层玩法 SOP 悬浮弹窗 (直接挂在 body 下，使用 fixed 定位彻底脱离所有父级层叠上下文) -->
+  <div id="algoSopGlobalTooltip" style="display: none; position: fixed; z-index: 999999; width: 440px; max-width: 90vw; background: #0f172a; border: 1.5px solid #38bdf8; border-radius: 12px; padding: 18px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.9), 0 0 25px rgba(56, 189, 248, 0.35); color: #f8fafc; pointer-events: auto; backdrop-filter: blur(8px);">
+    <div id="algoSopTooltipContent"></div>
+  </div>
+
   <!-- 分析中进度全屏遮罩 Modal -->
   <div class="progress-overlay" id="progressOverlay">
     <div class="progress-modal">
@@ -1009,9 +1014,6 @@
               <div id="goldenAlgoStatusBadge" class="badge badge-success" style="font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
                 <span id="algoBadgeText">💎 经典黄金4阶梯</span>
                 <span style="font-size: 11px; opacity: 0.9;">📖 玩法SOP ℹ️</span>
-              </div>
-              <div id="algoSopTooltip" class="algo-sop-tooltip" style="display: none; position: absolute; top: 0; left: calc(100% + 12px); width: 440px; max-width: min(520px, calc(100vw - 360px)); background: #0f172a; border: 1px solid #38bdf8; border-radius: 12px; padding: 18px; box-shadow: 0 20px 45px rgba(0,0,0,0.8), 0 0 20px rgba(56, 189, 248, 0.25); z-index: 99999; color: #f8fafc;">
-                <div id="algoSopTooltipContent"></div>
               </div>
             </div>
 
@@ -1604,42 +1606,53 @@
       `;
     }
 
-    // 初始化悬浮监听事件
+    // 初始化悬浮监听事件 (使用 Fixed 全局置顶定位)
     function initAlgoSopHoverEvents() {
       const badge = document.getElementById('goldenAlgoStatusBadge');
-      const tooltip = document.getElementById('algoSopTooltip');
+      const tooltip = document.getElementById('algoSopGlobalTooltip');
       if (!badge || !tooltip) return;
 
-      badge.addEventListener('mouseenter', () => {
+      let hideTimer = null;
+
+      const showTooltip = () => {
+        if (hideTimer) clearTimeout(hideTimer);
         updateAlgoSopTooltip();
         
-        // 动态检测屏幕边界，若窗口过窄则向下展示，否则向右侧浮现
         const rect = badge.getBoundingClientRect();
+        const tooltipWidth = 440;
         const availableRight = window.innerWidth - rect.right;
-        if (availableRight < 460) {
-          tooltip.style.left = '0';
-          tooltip.style.top = 'calc(100% + 8px)';
-          tooltip.style.width = '360px';
-        } else {
-          tooltip.style.left = 'calc(100% + 12px)';
-          tooltip.style.top = '0';
+        
+        // 优先显示在胶囊右侧；若右侧放不下则显示在胶囊正下方
+        if (availableRight >= tooltipWidth + 20) {
+          tooltip.style.left = `${rect.right + 12}px`;
+          // 垂直对齐，防止超出视口底部
+          const topPos = Math.min(rect.top, window.innerHeight - 480);
+          tooltip.style.top = `${Math.max(12, topPos)}px`;
           tooltip.style.width = '440px';
+        } else {
+          tooltip.style.left = `${Math.max(12, rect.left)}px`;
+          tooltip.style.top = `${rect.bottom + 8}px`;
+          tooltip.style.width = '360px';
         }
 
         tooltip.style.display = 'block';
-      });
+      };
 
-      badge.addEventListener('mouseleave', () => {
-        tooltip.style.display = 'none';
-      });
+      const hideTooltip = () => {
+        hideTimer = setTimeout(() => {
+          tooltip.style.display = 'none';
+        }, 150);
+      };
+
+      badge.addEventListener('mouseenter', showTooltip);
+      badge.addEventListener('mouseleave', hideTooltip);
 
       tooltip.addEventListener('mouseenter', () => {
+        if (hideTimer) clearTimeout(hideTimer);
         tooltip.style.display = 'block';
       });
 
-      tooltip.addEventListener('mouseleave', () => {
-        tooltip.style.display = 'none';
-      });
+      tooltip.addEventListener('mouseleave', hideTooltip);
     }
 
     function changePricingAlgorithmMode() {
