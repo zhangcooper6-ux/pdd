@@ -524,7 +524,7 @@
       flex-direction: column;
       gap: 14px;
       max-height: calc(100vh - 24px);
-      overflow-y: auto;
+      overflow-y: visible;
       padding-right: 4px;
     }
     /* 自定义滚动条让左栏更精致 */
@@ -1010,7 +1010,7 @@
                 <span id="algoBadgeText">💎 经典黄金4阶梯</span>
                 <span style="font-size: 11px; opacity: 0.9;">📖 玩法SOP ℹ️</span>
               </div>
-              <div id="algoSopTooltip" class="algo-sop-tooltip" style="display: none; position: absolute; top: calc(100% + 8px); left: 0; width: 380px; max-width: 90vw; background: #0f172a; border: 1px solid #38bdf8; border-radius: 12px; padding: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.6), 0 0 15px rgba(56, 189, 248, 0.2); z-index: 9999; color: #f8fafc;">
+              <div id="algoSopTooltip" class="algo-sop-tooltip" style="display: none; position: absolute; top: 0; left: calc(100% + 12px); width: 440px; max-width: min(520px, calc(100vw - 360px)); background: #0f172a; border: 1px solid #38bdf8; border-radius: 12px; padding: 18px; box-shadow: 0 20px 45px rgba(0,0,0,0.8), 0 0 20px rgba(56, 189, 248, 0.25); z-index: 99999; color: #f8fafc;">
                 <div id="algoSopTooltipContent"></div>
               </div>
             </div>
@@ -1612,6 +1612,20 @@
 
       badge.addEventListener('mouseenter', () => {
         updateAlgoSopTooltip();
+        
+        // 动态检测屏幕边界，若窗口过窄则向下展示，否则向右侧浮现
+        const rect = badge.getBoundingClientRect();
+        const availableRight = window.innerWidth - rect.right;
+        if (availableRight < 460) {
+          tooltip.style.left = '0';
+          tooltip.style.top = 'calc(100% + 8px)';
+          tooltip.style.width = '360px';
+        } else {
+          tooltip.style.left = 'calc(100% + 12px)';
+          tooltip.style.top = '0';
+          tooltip.style.width = '440px';
+        }
+
         tooltip.style.display = 'block';
       });
 
