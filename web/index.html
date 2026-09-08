@@ -1129,6 +1129,7 @@
                 <th>包含件数</th>
                 <th>单件成本(元)</th>
                 <th>拼单售价(元)</th>
+                <th>售价微调(元)</th>
                 <th>立减券(元)</th>
                 <th>折率</th>
                 <th>5+7虚高原价(元)</th>
@@ -1139,6 +1140,7 @@
                 <th>广告前毛利率</th>
                 <th>无退款理论ROI</th>
                 <th>真实保本ROI(含退款)</th>
+                <th style="color:#38bdf8; background:rgba(56, 189, 248, 0.1);">调整-真实保本ROI(含退款)</th>
                 <th>每单广告费(元)</th>
                 <th>广告后纯利润(元)</th>
                 <th>广告后纯利润率</th>
@@ -1931,10 +1933,10 @@
 
     // 算价表相关 JS
     let batchSkusList = [
-      { sku_name: '买一送一 (两把装)', sku_qty: 2, unit_cost: 0.94, selling_price: 21.0, coupon_amount: 3.0, discount_rate: 0.7, daily_orders: 210 },
-      { sku_name: '3把装 (高客单)', sku_qty: 3, unit_cost: 0.94, selling_price: 27.0, coupon_amount: 4.0, discount_rate: 0.7, daily_orders: 13 },
-      { sku_name: '2把装 (活动款)', sku_qty: 2, unit_cost: 0.94, selling_price: 13.9, coupon_amount: 2.0, discount_rate: 0.7, daily_orders: 48 },
-      { sku_name: '1把装 (引流福利)', sku_qty: 1, unit_cost: 0.94, selling_price: 8.9, coupon_amount: 1.0, discount_rate: 0.7, daily_orders: 162 }
+      { sku_name: '买一送一 (两把装)', sku_qty: 2, unit_cost: 0.94, selling_price: 21.0, price_adjust: 0.0, coupon_amount: 3.0, discount_rate: 0.7, daily_orders: 210 },
+      { sku_name: '3把装 (高客单)', sku_qty: 3, unit_cost: 0.94, selling_price: 27.0, price_adjust: 0.0, coupon_amount: 4.0, discount_rate: 0.7, daily_orders: 13 },
+      { sku_name: '2把装 (活动款)', sku_qty: 2, unit_cost: 0.94, selling_price: 13.9, price_adjust: 0.0, coupon_amount: 2.0, discount_rate: 0.7, daily_orders: 48 },
+      { sku_name: '1把装 (引流福利)', sku_qty: 1, unit_cost: 0.94, selling_price: 8.9, price_adjust: 0.0, coupon_amount: 1.0, discount_rate: 0.7, daily_orders: 162 }
     ];
 
     function initDefaultBatchTable() {
@@ -2182,11 +2184,32 @@
             const marginRatePct = ((Number(s.margin_rate) || 0) * 100).toFixed(1) + '%';
             const netMarginPct = ((Number(s.net_margin_rate) || 0) * 100).toFixed(1) + '%';
 
+            // 售价调整项（正数加，负数减，默认 0）
+            const adjustVal = batchSkusList[idx] && batchSkusList[idx].price_adjust !== undefined ? Number(batchSkusList[idx].price_adjust) : 0.0;
+            const originalSellingPrice = Number(s.selling_price) || 0.0;
+            const adjustedSellingPrice = Math.max(0.01, originalSellingPrice + adjustVal);
+
+            // 仅针对“调整-真实保本ROI(含退款)”进行独立沙盒测算：
+            // 调整后毛利 = 调整售价 - 快递 - 耗材 - 人工 - 运费险 - 商品总成本 - (调整售价 * 退款率) - (调整售价 * 平台扣点)
+            const goodsCost = Number(s.goods_cost) || (Number(s.unit_cost) * Number(s.sku_qty));
+            const fixedPackCost = express + material + labor + insurance;
+            const adjustedProfit = adjustedSellingPrice - fixedPackCost - goodsCost - (adjustedSellingPrice * refund) - (adjustedSellingPrice * commissionRate);
+            const adjustedBreakevenRoi = adjustedProfit > 0 ? (adjustedSellingPrice / adjustedProfit) : 99.0;
+
+            const formatRoi = (roi) => {
+              if (roi >= 99.0 || roi <= 0) return '亏损';
+              const str = roi.toFixed(3);
+              return str.endsWith('0') ? roi.toFixed(2) : str;
+            };
+
+            const adjustColor = adjustVal > 0 ? '#34d399' : (adjustVal < 0 ? '#f87171' : '#94a3b8');
+
             tr.innerHTML = `
               <td><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:130px;" value="${s.sku_name}" onchange="updateBatchSku(${idx}, 'sku_name', this.value)"></td>
               <td><input type="number" class="form-input" style="padding:4px 8px; font-size:12px; width:55px;" value="${s.sku_qty}" onchange="updateBatchSku(${idx}, 'sku_qty', parseInt(this.value))"></td>
               <td><input type="number" class="form-input" style="padding:4px 8px; font-size:12px; width:65px;" value="${s.unit_cost}" step="0.1" onchange="updateBatchSku(${idx}, 'unit_cost', parseFloat(this.value))"></td>
               <td><input type="number" class="form-input" style="padding:4px 8px; font-size:12px; width:70px;" value="${s.selling_price}" step="0.1" onchange="updateBatchSku(${idx}, 'selling_price', parseFloat(this.value))"></td>
+              <td><input type="number" class="form-input" id="skuPriceAdjust_${idx}" style="padding:4px 8px; font-size:12px; width:65px; color:${adjustColor}; font-weight:bold; border-color:${adjustVal !== 0 ? '#38bdf8' : ''};" value="${adjustVal}" step="0.5" oninput="onSkuPriceAdjustChange(${idx}, this.value)"></td>
               <td><input type="number" class="form-input" style="padding:4px 8px; font-size:12px; width:60px;" value="${s.coupon_amount}" step="0.5" onchange="updateBatchSku(${idx}, 'coupon_amount', parseFloat(this.value))"></td>
               <td><input type="number" class="form-input" style="padding:4px 8px; font-size:12px; width:55px;" value="${s.discount_rate}" step="0.05" onchange="updateBatchSku(${idx}, 'discount_rate', parseFloat(this.value))"></td>
               <td style="color:#f87171; font-weight:bold;">¥${formatPrice(s.inflated_original_price)}</td>
@@ -2197,6 +2220,7 @@
               <td style="color:#38bdf8; font-weight:bold;">${marginRatePct}</td>
               <td style="color:#94a3b8;">${formatPrice(s.raw_breakeven_roas)}</td>
               <td style="color:#fbbf24; font-weight:bold;">${formatPrice(s.breakeven_roas)}</td>
+              <td id="skuAdjustedRoi_${idx}" style="color:#38bdf8; font-weight:bold; background:rgba(56, 189, 248, 0.08);">${formatRoi(adjustedBreakevenRoi)}</td>
               <td>¥${formatPrice(s.ad_cost_per_order)}</td>
               <td style="color:${s.profit_after_ad >= 0 ? '#34d399' : '#f87171'}; font-weight:bold;">¥${formatPrice(s.profit_after_ad)}</td>
               <td style="color:${s.net_margin_rate >= 0 ? '#34d399' : '#f87171'}; font-weight:bold;">${netMarginPct}</td>
@@ -2265,8 +2289,55 @@
       }
     }
 
+    // 针对售价调整项的局部实时响应函数：仅重新计算对应行的【调整-真实保本ROI(含退款)】，绝不触发后端重新批量算价，绝不影响其他任何字段
+    function onSkuPriceAdjustChange(idx, val) {
+      const adjustNum = parseFloat(val);
+      const safeAdjust = isNaN(adjustNum) ? 0.0 : adjustNum;
+      
+      if (batchSkusList[idx]) {
+        batchSkusList[idx].price_adjust = safeAdjust;
+      }
+
+      const inputElem = document.getElementById(`skuPriceAdjust_${idx}`);
+      if (inputElem) {
+        inputElem.style.color = safeAdjust > 0 ? '#34d399' : (safeAdjust < 0 ? '#f87171' : '#94a3b8');
+        inputElem.style.borderColor = safeAdjust !== 0 ? '#38bdf8' : '';
+      }
+
+      const sku = batchSkusList[idx];
+      if (!sku) return;
+
+      const express = parseFloat(document.getElementById('calcExpressFee').value) || 1.8;
+      const material = parseFloat(document.getElementById('calcMaterialFee').value) || 0.1;
+      const labor = parseFloat(document.getElementById('calcLaborFee').value) || 0.25;
+      const refund = (parseFloat(document.getElementById('calcRefundRate').value) || 15) / 100;
+      const insurance = parseFloat(document.getElementById('calcInsuranceFee').value) || 0;
+      const commVal = document.getElementById('calcCommissionRate').value;
+      const commission = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
+
+      const originalSellingPrice = Number(sku.selling_price) || 0.0;
+      const adjustedSellingPrice = Math.max(0.01, originalSellingPrice + safeAdjust);
+
+      const goodsCost = (Number(sku.unit_cost) || 0) * (Number(sku.sku_qty) || 1);
+      const fixedPackCost = express + material + labor + insurance;
+      const adjustedProfit = adjustedSellingPrice - fixedPackCost - goodsCost - (adjustedSellingPrice * refund) - (adjustedSellingPrice * commission);
+      const adjustedBreakevenRoi = adjustedProfit > 0 ? (adjustedSellingPrice / adjustedProfit) : 99.0;
+
+      const roiElem = document.getElementById(`skuAdjustedRoi_${idx}`);
+      if (roiElem) {
+        if (adjustedBreakevenRoi >= 99.0 || adjustedBreakevenRoi <= 0) {
+          roiElem.innerText = '亏损';
+          roiElem.style.color = '#f87171';
+        } else {
+          const str = adjustedBreakevenRoi.toFixed(3);
+          roiElem.innerText = str.endsWith('0') ? adjustedBreakevenRoi.toFixed(2) : str;
+          roiElem.style.color = '#38bdf8';
+        }
+      }
+    }
+
     function addBatchSkuRow() {
-      batchSkusList.push({ sku_name: '新规格套餐', sku_qty: 1, unit_cost: 1.0, selling_price: 9.9, coupon_amount: 2.0, discount_rate: 0.7, daily_orders: 50 });
+      batchSkusList.push({ sku_name: '新规格套餐', sku_qty: 1, unit_cost: 1.0, selling_price: 9.9, price_adjust: 0.0, coupon_amount: 2.0, discount_rate: 0.7, daily_orders: 50 });
       renderBatchPricingTable();
     }
 
@@ -2777,6 +2848,7 @@
             sku_qty: qty,
             unit_cost: baseCostInput > 0 ? baseCostInput : 0.94,
             selling_price: Number(item.my_intercept_price || item.orig_price || 9.9),
+            price_adjust: 0.0,
             coupon_amount: coupon,
             discount_rate: 0.7,
             daily_orders: dailyOrders
@@ -2813,6 +2885,7 @@
             sku_qty: qty,
             unit_cost: baseCostInput > 0 ? baseCostInput : 0.94,
             selling_price: Number(s.price || s.selling_price || 9.9),
+            price_adjust: 0.0,
             coupon_amount: coupon,
             discount_rate: 0.7,
             daily_orders: dailyOrders
