@@ -224,8 +224,12 @@ async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
         # 2. 合规与违禁词排查
         compliance = PddProductAnalyzer.audit_compliance(raw_info["raw_title"], raw_info["benchmark_skus"])
         
-        # 3. 标题与命名规则重塑
-        titles = PddProductAnalyzer.restructure_title_and_rules(raw_info["raw_title"], raw_info["selling_points"])
+        # 3. 标题与命名规则重塑 (严格执行四段式防比价公式: 核心词 + 长尾修饰 + 材质场景 + 防比价差异词)
+        titles = PddProductAnalyzer.restructure_title_and_rules(
+            category_keywords=raw_info["category_keyword"],
+            selling_points=raw_info["selling_points"],
+            raw_title=raw_info["raw_title"]
+        )
         
         # 4. 黄金SKU矩阵与推广出价测算 (接入全局快递、包材、退率与扣点)
         sku_matrix = PddProductAnalyzer.design_golden_sku_matrix(

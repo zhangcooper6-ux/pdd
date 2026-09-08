@@ -2508,22 +2508,35 @@
         });
       }
 
-      // 4. 标题方案
+      // 4. 标题方案 (渲染四段式防比价拆解)
       const titlesCont = document.getElementById('titlePlansContainer');
       titlesCont.innerHTML = '';
       (data.title_plans || []).forEach(tp => {
         const div = document.createElement('div');
         div.style.background = '#090d16';
         div.style.border = '1px solid #1e293b';
-        div.style.padding = '12px 16px';
+        div.style.padding = '14px 16px';
         div.style.borderRadius = '10px';
+        
+        const fb = tp.formula_breakdown || {};
+        const breakdownHtml = fb['核心词'] ? `
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; font-size:11px;">
+            <span style="background:rgba(56, 189, 248, 0.15); color:#38bdf8; padding:2px 8px; border-radius:4px; border:1px solid rgba(56, 189, 248, 0.3);">核心词: ${fb['核心词']}</span>
+            <span style="background:rgba(99, 102, 241, 0.15); color:#818cf8; padding:2px 8px; border-radius:4px; border:1px solid rgba(99, 102, 241, 0.3);">长尾修饰: ${fb['长尾修饰词']}</span>
+            <span style="background:rgba(52, 211, 153, 0.15); color:#34d399; padding:2px 8px; border-radius:4px; border:1px solid rgba(52, 211, 153, 0.3);">材质场景: ${fb['材质场景']}</span>
+            <span style="background:rgba(244, 63, 94, 0.15); color:#f43f5e; padding:2px 8px; border-radius:4px; border:1px solid rgba(244, 63, 94, 0.3);">防比价词: ${fb['防比价差异词']}</span>
+          </div>
+        ` : '';
+
         div.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <span style="font-weight:bold; color:#38bdf8; font-size:13px;">${tp.type || '方案'}</span>
+            <span style="font-weight:bold; color:#38bdf8; font-size:13px;">${tp.scheme || tp.type || '方案'}</span>
+            <span style="font-size:11px; color:#94a3b8;">${tp.char_count || 28}字</span>
             <button class="btn btn-outline" style="font-size:11px; padding:3px 8px;" onclick="copyText('${(tp.title || '').replace(/'/g, "\\'")}')">复制标题</button>
           </div>
-          <div style="font-size:13px; color:#f1f5f9; word-break:break-all;">${tp.title || ''}</div>
-          <div style="font-size:11px; color:#94a3b8; margin-top:6px;">💡 核心优势: ${tp.features || ''}</div>
+          <div style="font-size:13px; font-weight:600; color:#f1f5f9; word-break:break-all; line-height:1.5;">${tp.title || ''}</div>
+          ${breakdownHtml}
+          <div style="font-size:11px; color:#94a3b8; margin-top:4px;">💡 策略: ${tp.strategy || tp.features || ''}</div>
         `;
         titlesCont.appendChild(div);
       });

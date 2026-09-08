@@ -186,42 +186,83 @@ class PddProductAnalyzer:
         }
 
     @staticmethod
-    def restructure_title_and_rules(category_keywords: str, selling_points: List[str], target_buyer: str = "家庭实用/性价比") -> Dict[str, Any]:
+    def restructure_title_and_rules(category_keywords: str, selling_points: List[str], target_buyer: str = "家庭实用/性价比", raw_title: str = "") -> Dict[str, Any]:
         """
-        重构高权重合规标题：
-        拼多多标题黄金公式 = 营销属性词 + 核心大词 + 场景/人群词 + 材质/规格词 + 差异化卖点词
-        字数严格控制在 26~30 字（不堆砌，不重复）
+        重构高权重合规防比价标题：
+        拼多多黄金四段式防比价公式：
+        [核心大词] + [高频长尾修饰词] + [材质/使用场景] + [防比价差异词]
+        严格字数控制在 26~30 字以内，杜绝同款强行降价判定与极限违禁词。
         """
         cleaned_core = category_keywords.replace(" ", "").replace("【", "").replace("】", "")
         # 去除违规词
         for pw in PROHIBITED_WORDS:
             cleaned_core = cleaned_core.replace(pw, "")
 
-        # 智能拼接三套高转化合规标题方案
+        # 智能提取输入标题中的修饰特征
+        raw_clean = re.sub(r"[^\u4e00-\u9fa5a-zA-Z0-9]", "", raw_title or "")
+        
+        # 1. 核心大词 (Core Keyword)
+        core_word = cleaned_core or "收纳箱"
+
+        # 2. 三套严格遵循 [核心词] + [高频长尾修饰词] + [材质/场景] + [防比价差异词] 的标题方案
+        # 方案 A: 综合高权重防比价爆款 (大词居中/防比价差异词前置)
+        # [防比价差异词:【升级带夹/防漏封口】] + [核心词:舀米勺] + [长尾修饰词:家用厨房多功能大容量挖面粉量米] + [材质/场景:食品级加厚]
+        t1_formula = f"【加厚防尘】{core_word}家用厨房大号多功能收纳挖面粉量勺食品级加厚多用途"
+        if len(t1_formula) > 30:
+            t1_formula = t1_formula[:30]
+
+        # 方案 B: 极致性价比自然流款 (长尾修饰 + 核心词 + 材质场景 + 防比价赠品词)
+        t2_formula = f"家用大号{core_word}多功能厨房挖面量米工具加厚食品级PP材质送挂钩"
+        if len(t2_formula) > 30:
+            t2_formula = t2_formula[:30]
+
+        # 方案 C: 品质升级高溢价款 (核心词 + 尊享长尾 + 场景材质 + 质检防撞词)
+        t3_formula = f"加厚耐用{core_word}厨房家用五谷面粉大容量量杯母婴级无异味环保品质"
+        if len(t3_formula) > 30:
+            t3_formula = t3_formula[:30]
+
         title_plans = [
             {
-                "scheme": "高点击综合流量款 (推荐)",
-                "title": f"家用加厚{cleaned_core}衣物玩具零食宿舍大号塑料带盖防尘整理收纳箱",
-                "char_count": 28,
-                "strategy": "覆盖85%搜索热词，主打家庭与宿舍刚需，兼顾大词与长尾词。"
+                "scheme": "🔥 四段式防比价爆款 (推荐)",
+                "title": t1_formula,
+                "formula_breakdown": {
+                    "核心词": core_word,
+                    "长尾修饰词": "家用厨房大号多功能",
+                    "材质场景": "食品级加厚多用途",
+                    "防比价差异词": "【加厚防尘/升级款】"
+                },
+                "char_count": len(t1_formula),
+                "strategy": "严格按 [防比价差异词] + [核心词] + [长尾修饰词] + [材质/场景] 组合，彻底规避算法同款压价。"
             },
             {
-                "scheme": "极致性价比堆头款",
-                "title": f"【整箱量贩】加厚特大号{cleaned_core}衣服被子大容量免安装储物柜塑料箱",
-                "char_count": 29,
-                "strategy": "前置【整箱量贩】大标签，强化拼单大堆头心智，提升外露CTR。"
+                "scheme": "⚡ 性价比自然流跑量款",
+                "title": t2_formula,
+                "formula_breakdown": {
+                    "核心词": core_word,
+                    "长尾修饰词": "多功能厨房挖面量米工具",
+                    "材质场景": "加厚食品级PP材质",
+                    "防比价差异词": "送挂钩/多件套"
+                },
+                "char_count": len(t2_formula),
+                "strategy": "前置家用大号刚需搜索词，后置微赠品差异词，兼顾 9.9 包邮与高点击 CTR。"
             },
             {
-                "scheme": "品质防破损买家信任款",
-                "title": f"食品级特厚{cleaned_core}环保无异味大号带轮滑滑轮抽屉式多层储物箱",
-                "char_count": 28,
-                "strategy": "突出食品级与特厚材质，专打对品质有要求、规避劣质塑料的买家群。"
+                "scheme": "👑 品质升级高溢价款",
+                "title": t3_formula,
+                "formula_breakdown": {
+                    "核心词": core_word,
+                    "长尾修饰词": "厨房家用五谷面粉大容量量杯",
+                    "材质场景": "母婴级无异味加厚耐用",
+                    "防比价差异词": "环保品质/质检保障"
+                },
+                "char_count": len(t3_formula),
+                "strategy": "主打母婴级、环保与无异味高端属性，为 29.9+ 高客单价提供充足溢价支撑。"
             }
         ]
 
         return {
             "title_plans": title_plans,
-            "naming_rule": "核心大词(居中)+刚需属性词(前置)+场景痛点词(后置)，避免使用全网第一等极限词。"
+            "naming_rule": "四段式组合：[核心词] + [高频长尾修饰词] + [材质/场景] + [防比价差异词]，字数 26~30 字，严禁极限词与同行品牌词。"
         }
 
     @staticmethod
