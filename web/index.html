@@ -507,6 +507,51 @@
     .markdown-body th { background: #1e293b; color: #38bdf8; font-weight: 600; }
     .markdown-body tr:nth-child(even) { background: rgba(30, 41, 59, 0.4); }
     .markdown-body code { background: #1e293b; color: #f43f5e; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+    /* Tab 2 左右工作台布局支持 */
+    .pricing-workbench-container {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    .pricing-sidebar-sticky {
+      position: sticky;
+      top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    /* 自定义滚动条让左栏更精致 */
+    .pricing-sidebar-sticky::-webkit-scrollbar {
+      width: 6px;
+    }
+    .pricing-sidebar-sticky::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    .pricing-sidebar-sticky::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    .pricing-main-workspace {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 0;
+    }
+    @media (max-width: 1280px) {
+      .pricing-workbench-container {
+        grid-template-columns: 1fr;
+      }
+      .pricing-sidebar-sticky {
+        position: static;
+        max-height: none;
+        overflow-y: visible;
+        padding-right: 0;
+      }
+    }
     .markdown-body pre { background: #0b1120; border: 1px solid #1e293b; border-radius: 8px; padding: 14px; overflow-x: auto; margin: 16px 0; }
     .markdown-body pre code { background: transparent; color: #38bdf8; padding: 0; }
     .markdown-body blockquote { border-left: 4px solid #3b82f6; padding-left: 14px; color: #94a3b8; margin: 14px 0; }
@@ -924,249 +969,268 @@
     <!-- ==================== TAB 2: 电商高阶算价表与投产反算模拟器 (线上化) ==================== -->
     <div id="pricingSection" style="display: none; flex-direction: column; gap: 24px;">
 
-      <!-- 通用成本与营销参数全局配置 -->
-      <div class="card" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border: 1px solid #6366f1;">
-        <div class="card-header">
-          <div class="card-title">
-            <div class="card-title-icon" style="background: rgba(99, 102, 241, 0.2); color: #818cf8;">🧮</div>
-            <span>电商通用算价与付费投产倒推引擎 (支持微付费/半付费/强付费模式)</span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 6px; background: rgba(15, 23, 42, 0.8); padding: 4px 10px; border-radius: 8px; border: 1px solid #334155;">
-              <span style="font-size: 12px; color: #94a3b8;">⚙️ 算价模式选择:</span>
-              <select id="pricingAlgorithmSelect" class="form-input" style="padding: 3px 8px; font-size: 12px; width: auto; background: #1e293b; color: #f8fafc; border: 1px solid #475569; border-radius: 6px;" onchange="changePricingAlgorithmMode()">
+      <!-- 左右响应式工作台容器 -->
+      <div class="pricing-workbench-container">
+
+        <!-- 左侧固定控制台：算法选择 + 全局履约参数 + 单品测算输入 -->
+        <div class="pricing-sidebar-sticky">
+
+          <!-- 1. 算法选择与全局履约成本面板 -->
+          <div class="card" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border: 1px solid #6366f1; padding: 18px;">
+            <div class="card-header" style="margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(99, 102, 241, 0.25);">
+              <div class="card-title" style="font-size: 14px;">
+                <div class="card-title-icon" style="background: rgba(99, 102, 241, 0.2); color: #818cf8;">🧮</div>
+                <span>算价引擎与履约参数</span>
+              </div>
+            </div>
+
+            <!-- 模式选择 -->
+            <div style="margin-bottom: 14px;">
+              <label class="form-label" style="font-size: 11.5px; color: #cbd5e1; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span>⚙️ 核心算价模式切换：</span>
+              </label>
+              <select id="pricingAlgorithmSelect" class="form-input" style="padding: 7px 10px; font-size: 12px; width: 100%; background: #1e293b; color: #f8fafc; border: 1px solid #475569; border-radius: 8px;" onchange="changePricingAlgorithmMode()">
                 <option value="golden" selected>💎 经典黄金 4 阶梯算法 (常规中高溢价/高毛利)</option>
-                <option value="mid_range_natural_flow">🔥 中低成本黄金自然流算法 (2~8元/保本微利卡位+买1送1转单)</option>
-                <option value="mid_range_high_margin">👑 中低成本高毛利开车算法 (2~8元/单单留足7~12元毛利/低ROI爆量)</option>
-                <option value="ultra_low_cost">⚡ 极致性价比自然流算法 (≤2元低价卡位/9.9包邮/破零)</option>
-                <option value="mid_cost_natural_flow">📦 中大客单性价比自然流算法 (8~15元高质/防亏起盘)</option>
-                <option value="mid_cost_high_margin">✨ 中大客单高溢价强付费算法 (8~15元高奢重塑/大毛利破局)</option>
-                <option value="marginal_logistics">🚚 边际运费多件套算法 (≤2元运费均摊/多件高毛利开车)</option>
+                <option value="mid_range_natural_flow">🔥 中低成本黄金自然流 (2~8元/微利卡位+买1送1)</option>
+                <option value="mid_range_high_margin">👑 中低成本高毛利开车 (2~8元/单单留7~12元毛利)</option>
+                <option value="ultra_low_cost">⚡ 极致性价比自然流 (≤2元低价卡位/9.9包邮/破零)</option>
+                <option value="mid_cost_natural_flow">📦 中大客单性价比自然流 (8~15元高质/防亏起盘)</option>
+                <option value="mid_cost_high_margin">✨ 中大客单高溢价强付费 (8~15元高奢/大毛利破局)</option>
+                <option value="marginal_logistics">🚚 边际运费多件套算法 (≤2元运费均摊/多件开车)</option>
                 <option value="custom">✏️ 自主自定义模式 (纯手工自由输入)</option>
               </select>
             </div>
-            
-            <!-- 悬浮查看玩法 SOP 胶囊 -->
-            <div class="algo-sop-hover-container" style="position: relative; display: inline-block;">
-              <div id="goldenAlgoStatusBadge" class="badge badge-success" style="font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 5px 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+
+            <!-- 玩法SOP浮动卡片 -->
+            <div class="algo-sop-hover-container" style="position: relative; margin-bottom: 14px;">
+              <div id="goldenAlgoStatusBadge" class="badge badge-success" style="font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
                 <span id="algoBadgeText">💎 经典黄金4阶梯</span>
-                <span style="font-size: 12px; opacity: 0.85;">📖 玩法SOP ℹ️</span>
+                <span style="font-size: 11px; opacity: 0.9;">📖 玩法SOP ℹ️</span>
               </div>
-              
-              <!-- 悬浮弹窗卡片 (Tooltip) -->
-              <div id="algoSopTooltip" class="algo-sop-tooltip" style="display: none; position: absolute; top: calc(100% + 8px); right: 0; width: 440px; max-width: 90vw; background: #0f172a; border: 1px solid #38bdf8; border-radius: 12px; padding: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.6), 0 0 15px rgba(56, 189, 248, 0.2); z-index: 9999; color: #f8fafc;">
+              <div id="algoSopTooltip" class="algo-sop-tooltip" style="display: none; position: absolute; top: calc(100% + 8px); left: 0; width: 380px; max-width: 90vw; background: #0f172a; border: 1px solid #38bdf8; border-radius: 12px; padding: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.6), 0 0 15px rgba(56, 189, 248, 0.2); z-index: 9999; color: #f8fafc;">
                 <div id="algoSopTooltipContent"></div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end;">
-          <div class="form-group">
-            <label class="form-label">基础快递包材费 (元)：</label>
-            <input type="number" class="form-input" id="calcExpressFee" value="1.80" step="0.1" onchange="onGlobalPricingParamChange()">
-          </div>
-          <div class="form-group">
-            <label class="form-label">每单包装耗材 (元)：</label>
-            <input type="number" class="form-input" id="calcMaterialFee" value="0.10" step="0.05" onchange="onGlobalPricingParamChange()">
-          </div>
-          <div class="form-group">
-            <label class="form-label">人工及打包费 (元)：</label>
-            <input type="number" class="form-input" id="calcLaborFee" value="0.25" step="0.05" onchange="onGlobalPricingParamChange()">
-          </div>
-          <div class="form-group">
-            <label class="form-label">预期退货退款率 (%)：</label>
-            <input type="number" class="form-input" id="calcRefundRate" value="15" step="1" onchange="onGlobalPricingParamChange()">
-          </div>
-          <div class="form-group">
-            <label class="form-label">运费险及售后损耗 (元)：</label>
-            <input type="number" class="form-input" id="calcInsuranceFee" value="0.00" step="0.1" onchange="onGlobalPricingParamChange()">
-          </div>
-          <div class="form-group">
-            <label class="form-label">平台佣金/扣点比例 (%)：</label>
-            <input type="number" class="form-input" id="calcCommissionRate" value="0.6" step="0.1" onchange="onGlobalPricingParamChange()">
-          </div>
-          <div class="form-group">
-            <label class="form-label">实际全站设定 ROAS (选填)：</label>
-            <input type="number" class="form-input" id="calcTargetRoas" placeholder="没填则按真实保本ROI" step="0.1" onchange="onGlobalPricingParamChange()">
-          </div>
-        </div>
-      </div>
-
-      <!-- 单 SKU 极速算价与投产阶梯卡片 -->
-      <div class="charts-grid">
-        <div class="card col-5" style="border-color: #38bdf8;">
-          <div class="card-header">
-            <div class="card-title">
-              <div class="card-title-icon" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8;">⚡</div>
-              <span>单品快捷算价计算器</span>
-            </div>
-            <button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="loadPresetPricing('micro')">载入微付费示例</button>
-          </div>
-
-          <div style="display: flex; flex-direction: column; gap: 14px;">
-            <div class="form-group">
-              <label class="form-label">SKU / 规格名称：</label>
-              <input type="text" class="form-input" id="singleSkuName" value="一把装 (精装版)">
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <div class="form-group">
-                <label class="form-label">包含单件数量 (件)：</label>
-                <input type="number" class="form-input" id="singleSkuQty" value="1" min="1">
+            <!-- 履约参数网格 (2列紧凑排布) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px;">基础快递 (元)：</label>
+                <input type="number" class="form-input" id="calcExpressFee" value="1.80" step="0.1" style="padding: 4px 8px; font-size: 12px;" onchange="onGlobalPricingParamChange()">
               </div>
-              <div class="form-group">
-                <label class="form-label">单件成本底价 (元)：</label>
-                <input type="number" class="form-input" id="singleUnitCost" value="0.94" step="0.01">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px;">包装耗材 (元)：</label>
+                <input type="number" class="form-input" id="calcMaterialFee" value="0.10" step="0.05" style="padding: 4px 8px; font-size: 12px;" onchange="onGlobalPricingParamChange()">
               </div>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <div class="form-group">
-                <label class="form-label">预计拼单售价 (元)：</label>
-                <input type="number" class="form-input" id="singleSellingPrice" value="13.90" step="0.1">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px;">人工打包 (元)：</label>
+                <input type="number" class="form-input" id="calcLaborFee" value="0.25" step="0.05" style="padding: 4px 8px; font-size: 12px;" onchange="onGlobalPricingParamChange()">
               </div>
-              <div class="form-group">
-                <label class="form-label">立减优惠券面额 (元)：</label>
-                <input type="number" class="form-input" id="singleCoupon" value="2.00" step="0.5">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px;">预期退款率 (%)：</label>
+                <input type="number" class="form-input" id="calcRefundRate" value="15" step="1" style="padding: 4px 8px; font-size: 12px;" onchange="onGlobalPricingParamChange()">
               </div>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <div class="form-group">
-                <label class="form-label">限时折扣率 (如0.7表示7折)：</label>
-                <input type="number" class="form-input" id="singleDiscountRate" value="0.70" step="0.05" min="0.1" max="1.0">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px;">运费险损耗 (元)：</label>
+                <input type="number" class="form-input" id="calcInsuranceFee" value="0.00" step="0.1" style="padding: 4px 8px; font-size: 12px;" onchange="onGlobalPricingParamChange()">
               </div>
-              <div class="form-group">
-                <label class="form-label">实际全站设定 ROAS (选填)：</label>
-                <input type="number" class="form-input" id="singleActualRoas" placeholder="默认使用保本/净ROAS" step="0.1">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px;">平台扣点 (%)：</label>
+                <input type="number" class="form-input" id="calcCommissionRate" value="0.6" step="0.1" style="padding: 4px 8px; font-size: 12px;" onchange="onGlobalPricingParamChange()">
               </div>
             </div>
 
-            <button class="btn btn-primary" style="padding: 10px; justify-content: center; font-size: 14px;" onclick="runSinglePricingCalc()">
-              🧮 立即精准测算
-            </button>
+            <!-- 全局ROAS目标设定 -->
+            <div class="form-group" style="margin-top: 10px; margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px;">实际全站设定 ROAS (选填)：</label>
+              <input type="number" class="form-input" id="calcTargetRoas" placeholder="不填则按各SKU保本ROI" step="0.1" style="padding: 4px 8px; font-size: 12px;" onchange="onGlobalPricingParamChange()">
+            </div>
           </div>
+
+          <!-- 2. 单品快捷测算器 (集成在左栏) -->
+          <div class="card" style="border-color: #38bdf8; padding: 16px;">
+            <div class="card-header" style="margin-bottom: 10px; padding-bottom: 8px;">
+              <div class="card-title" style="font-size: 13px;">
+                <div class="card-title-icon" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8;">⚡</div>
+                <span>单品快捷算价</span>
+              </div>
+              <button class="btn btn-outline" style="padding: 2px 6px; font-size: 10px;" onclick="loadPresetPricing('micro')">示例</button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px;">SKU 规格名称：</label>
+                <input type="text" class="form-input" id="singleSkuName" value="一把装 (精装版)" style="padding: 4px 8px; font-size: 12px;">
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 11px;">包含件数：</label>
+                  <input type="number" class="form-input" id="singleSkuQty" value="1" min="1" style="padding: 4px 8px; font-size: 12px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 11px;">单件成本 (元)：</label>
+                  <input type="number" class="form-input" id="singleUnitCost" value="0.94" step="0.01" style="padding: 4px 8px; font-size: 12px;">
+                </div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 11px;">拼单售价 (元)：</label>
+                  <input type="number" class="form-input" id="singleSellingPrice" value="13.90" step="0.1" style="padding: 4px 8px; font-size: 12px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 11px;">立减券 (元)：</label>
+                  <input type="number" class="form-input" id="singleCoupon" value="2.00" step="0.5" style="padding: 4px 8px; font-size: 12px;">
+                </div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 11px;">限时折扣率：</label>
+                  <input type="number" class="form-input" id="singleDiscountRate" value="0.70" step="0.05" min="0.1" max="1.0" style="padding: 4px 8px; font-size: 12px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 11px;">实设ROAS：</label>
+                  <input type="number" class="form-input" id="singleActualRoas" placeholder="默认保本" step="0.1" style="padding: 4px 8px; font-size: 12px;">
+                </div>
+              </div>
+
+              <button class="btn btn-primary" style="padding: 7px; justify-content: center; font-size: 12px; margin-top: 4px;" onclick="runSinglePricingCalc()">
+                🧮 测算单品
+              </button>
+            </div>
+          </div>
+
         </div>
 
-        <!-- 单品算价测算结果展示 -->
-        <div class="card col-7" id="singlePricingOutputCard">
-          <div class="card-header">
-            <div class="card-title">📊 测算结果与投产倒推路线</div>
-            <span class="badge badge-success" id="singleResultBadge">保本投产比就绪</span>
+        <!-- 右侧主工作区：全店多 SKU 矩阵算价大盘 + 单品测算结果详情 -->
+        <div class="pricing-main-workspace">
+
+          <!-- 批量 SKU 组合矩阵算价与日度/月度利润模拟 -->
+          <div class="card" style="margin-bottom: 0;">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="card-title-icon">📦</div>
+                <span>全店多 SKU 矩阵算价与日度/月度利润模拟看板</span>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <button class="btn btn-primary" style="font-size: 12px; padding: 5px 12px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; box-shadow: 0 2px 8px rgba(37,99,235,0.35); display: flex; align-items: center; gap: 4px;" onclick="recalculateBatchMatrix()">
+                  <span>🔄</span>
+                  <span>按当前算法重算全盘</span>
+                </button>
+                <button class="btn btn-outline" style="font-size: 12px;" onclick="addBatchSkuRow()">➕ 添加 SKU</button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table id="batchPricingTable">
+                <thead>
+                  <tr>
+                    <th>SKU名称</th>
+                    <th>包含件数</th>
+                    <th>单件成本(元)</th>
+                    <th>拼单售价(元)</th>
+                    <th>售价微调(元)</th>
+                    <th>立减券(元)</th>
+                    <th>折率</th>
+                    <th>5+7虚高原价(元)</th>
+                    <th>券后到手价(元)</th>
+                    <th>划线总优惠(元)</th>
+                    <th>目标日单量</th>
+                    <th>每单毛利(元)</th>
+                    <th>广告前毛利率</th>
+                    <th>无退款理论ROI</th>
+                    <th>真实保本ROI(含退款)</th>
+                    <th style="color:#38bdf8; background:rgba(56, 189, 248, 0.1);">调整-真实保本ROI(含退款)</th>
+                    <th>每单广告费(元)</th>
+                    <th>广告后纯利润(元)</th>
+                    <th>广告后纯利润率</th>
+                    <th>日预估净利润(元)</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="batchPricingTbody">
+                  <!-- 动态填充 -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 汇总区域 -->
+            <div style="margin-top: 16px; padding: 14px 18px; background: linear-gradient(135deg, #090d16 0%, #162032 100%); border-radius: 12px; border: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div>
+                <div style="font-size: 12.5px; color: #94a3b8;">组合预估总日单量: <strong style="color: #fff;" id="sumDailyOrders">0</strong> 单 | 组合综合投产比 (ROAS): <strong style="color: #fbbf24;" id="sumOverallRoas">0.00</strong></div>
+                <div style="font-size: 13.5px; color: #cbd5e1; margin-top: 4px;">预估日成交额: <strong style="color: #38bdf8;" id="sumDailyRev">¥0.00</strong> | 预估日广告花费: <strong style="color: #f87171;" id="sumDailyAd">¥0.00</strong></div>
+              </div>
+
+              <div style="text-align: right;">
+                <div style="font-size: 11px; color: #94a3b8;">预估日净利润</div>
+                <div style="font-size: 24px; font-weight: 800; color: #34d399;" id="sumDailyNetProfit">¥0.00</div>
+                <div style="font-size: 11px; color: #64748b;">预估月净利润 (30天): <span style="color: #a855f7; font-weight: bold;" id="sumMonthlyNetProfit">¥0.00</span></div>
+              </div>
+            </div>
           </div>
 
-          <div class="metric-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 16px;">
-            <div class="metric-card">
-              <div class="metric-title">每单扣成本毛利 (含退款)</div>
-              <div class="metric-value" id="calcOutProfit" style="font-size: 20px; color: #34d399;">¥0.00</div>
-              <div class="metric-sub">毛利率: <span id="calcOutMarginRate">0%</span></div>
+          <!-- 单品算价测算结果展示折叠/明细卡片 -->
+          <div class="card" id="singlePricingOutputCard" style="margin-bottom: 0;">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="card-title-icon" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">📊</div>
+                <span>单品精准测算结果与投产倒推路线</span>
+              </div>
+              <span class="badge badge-success" id="singleResultBadge">保本投产比就绪</span>
             </div>
 
-            <div class="metric-card pdd">
-              <div class="metric-title">设定 ROAS 广告花费</div>
-              <div class="metric-value" id="calcOutAdSpend" style="font-size: 20px; color: #f87171;">¥0.00</div>
-              <div class="metric-sub">出价占比: <span id="calcOutAdRatio">0%</span></div>
+            <div class="metric-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-bottom: 14px;">
+              <div class="metric-card">
+                <div class="metric-title">每单扣成本毛利 (含退款)</div>
+                <div class="metric-value" id="calcOutProfit" style="font-size: 18px; color: #34d399;">¥0.00</div>
+                <div class="metric-sub">毛利率: <span id="calcOutMarginRate">0%</span></div>
+              </div>
+
+              <div class="metric-card pdd">
+                <div class="metric-title">设定 ROAS 广告花费</div>
+                <div class="metric-value" id="calcOutAdSpend" style="font-size: 18px; color: #f87171;">¥0.00</div>
+                <div class="metric-sub">出价占比: <span id="calcOutAdRatio">0%</span></div>
+              </div>
+
+              <div class="metric-card success">
+                <div class="metric-title">广告后每单净利润</div>
+                <div class="metric-value" id="calcOutNetProfit" style="font-size: 18px; color: #38bdf8;">¥0.00</div>
+                <div class="metric-sub">纯净利润率: <span id="calcOutNetMarginRate">0%</span></div>
+              </div>
+
+              <div class="metric-card warning">
+                <div class="metric-title">🛡️ 真实保本 ROI (含退款损耗)</div>
+                <div class="metric-value" id="calcOutBreakevenRoas" style="font-size: 20px; color: #fbbf24;">1.785</div>
+                <div class="metric-sub">无退款理论极限值: <span id="calcOutRawBreakevenRoas">1.41</span></div>
+              </div>
             </div>
 
-            <div class="metric-card success">
-              <div class="metric-title">广告后每单净利润</div>
-              <div class="metric-value" id="calcOutNetProfit" style="font-size: 20px; color: #38bdf8;">¥0.00</div>
-              <div class="metric-sub">纯净利润率: <span id="calcOutNetMarginRate">0%</span></div>
-            </div>
-
-            <div class="metric-card warning">
-              <div class="metric-title">🛡️ 真实保本 ROI (含退款损耗)</div>
-              <div class="metric-value" id="calcOutBreakevenRoas" style="font-size: 22px; color: #fbbf24;">1.785</div>
-              <div class="metric-sub">无退款理论极限值: <span id="calcOutRawBreakevenRoas">1.41</span></div>
+            <!-- 拼多多高阶营销打法与 14 天拖价路线 -->
+            <div style="background: #090d16; border: 1px solid #1e293b; border-radius: 10px; padding: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; font-size: 12px;">
+              <div>
+                <span style="color: #94a3b8;">拼多多 5+7 限时折扣虚高价:</span>
+                <strong style="color: #f87171; display: block; margin-top: 2px; font-size: 13px;" id="calcOutInflatedPrice">¥0.00</strong>
+              </div>
+              <div>
+                <span style="color: #94a3b8;">反算券后前端到手价:</span>
+                <strong style="color: #34d399; display: block; margin-top: 2px; font-size: 13px;" id="calcOutReflowPrice">¥0.00</strong>
+              </div>
+              <div>
+                <span style="color: #94a3b8;">营销划线总优惠 (虚高 - 到手):</span>
+                <strong style="color: #e11d48; display: block; margin-top: 2px; font-size: 13px;" id="calcOutTotalDiscount">¥0.00</strong>
+              </div>
+              <div>
+                <span style="color: #94a3b8;">起量期投产比 (ROAS / 0.8):</span>
+                <strong style="color: #fbbf24; display: block; margin-top: 2px; font-size: 13px;" id="calcOutRoasService">0.00</strong>
+              </div>
+              <div>
+                <span style="color: #94a3b8;">后期权重最佳目标 ROAS (1.3x):</span>
+                <strong style="color: #a855f7; display: block; margin-top: 2px; font-size: 13px;" id="calcOutOptimalRoas">0.00</strong>
+              </div>
             </div>
           </div>
 
-          <!-- 拼多多高阶营销打法与 14 天拖价路线 -->
-          <div style="background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">
-              <span style="color: #94a3b8;">拼多多 5+7 折限时折扣虚高价:</span>
-              <strong style="color: #f87171;" id="calcOutInflatedPrice">¥0.00</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">
-              <span style="color: #94a3b8;">反算卷后前端到手价:</span>
-              <strong style="color: #34d399;" id="calcOutReflowPrice">¥0.00</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">
-              <span style="color: #94a3b8;">营销页面划线总优惠 (虚高价 - 到手价):</span>
-              <strong style="color: #e11d48;" id="calcOutTotalDiscount">¥0.00</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">
-              <span style="color: #94a3b8;">售后/起量期投产比 (ROAS / 0.8):</span>
-              <strong style="color: #fbbf24;" id="calcOutRoasService">0.00</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #94a3b8;">后期权重上升最佳目标 ROAS (1.3x):</span>
-              <strong style="color: #a855f7;" id="calcOutOptimalRoas">0.00</strong>
-            </div>
-          </div>
         </div>
-      </div>
 
-      <!-- 批量 SKU 组合矩阵算价与日度/月度利润模拟 -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <div class="card-title-icon">📦</div>
-            <span>全店多 SKU 矩阵算价与日度/月度利润模拟看板</span>
-          </div>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <button class="btn btn-primary" style="font-size: 12px; padding: 5px 12px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; box-shadow: 0 2px 8px rgba(37,99,235,0.35); display: flex; align-items: center; gap: 4px;" onclick="recalculateBatchMatrix()">
-              <span>🔄</span>
-              <span>按当前算法重算全盘</span>
-            </button>
-            <button class="btn btn-outline" style="font-size: 12px;" onclick="addBatchSkuRow()">➕ 添加 SKU 算价行</button>
-          </div>
-        </div>
-
-        <div class="table-responsive">
-          <table id="batchPricingTable">
-            <thead>
-              <tr>
-                <th>SKU名称</th>
-                <th>包含件数</th>
-                <th>单件成本(元)</th>
-                <th>拼单售价(元)</th>
-                <th>售价微调(元)</th>
-                <th>立减券(元)</th>
-                <th>折率</th>
-                <th>5+7虚高原价(元)</th>
-                <th>券后到手价(元)</th>
-                <th>划线总优惠(元)</th>
-                <th>目标日单量</th>
-                <th>每单毛利(元)</th>
-                <th>广告前毛利率</th>
-                <th>无退款理论ROI</th>
-                <th>真实保本ROI(含退款)</th>
-                <th style="color:#38bdf8; background:rgba(56, 189, 248, 0.1);">调整-真实保本ROI(含退款)</th>
-                <th>每单广告费(元)</th>
-                <th>广告后纯利润(元)</th>
-                <th>广告后纯利润率</th>
-                <th>日预估净利润(元)</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody id="batchPricingTbody">
-              <!-- 动态填充 -->
-            </tbody>
-          </table>
-        </div>
-
-        <!-- 汇总区域 -->
-        <div style="margin-top: 20px; padding: 16px 20px; background: linear-gradient(135deg, #090d16 0%, #162032 100%); border-radius: 12px; border: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <div style="font-size: 13px; color: #94a3b8;">组合预估总日单量: <strong style="color: #fff;" id="sumDailyOrders">0</strong> 单 | 组合综合投产比 (ROAS): <strong style="color: #fbbf24;" id="sumOverallRoas">0.00</strong></div>
-            <div style="font-size: 14px; color: #cbd5e1; margin-top: 4px;">预估日成交额: <strong style="color: #38bdf8;" id="sumDailyRev">¥0.00</strong> | 预估日广告花费: <strong style="color: #f87171;" id="sumDailyAd">¥0.00</strong></div>
-          </div>
-
-          <div style="text-align: right;">
-            <div style="font-size: 12px; color: #94a3b8;">预估日净利润</div>
-            <div style="font-size: 26px; font-weight: 800; color: #34d399;" id="sumDailyNetProfit">¥0.00</div>
-            <div style="font-size: 11px; color: #64748b;">预估月净利润 (30天): <span style="color: #a855f7; font-weight: bold;" id="sumMonthlyNetProfit">¥0.00</span></div>
-          </div>
-        </div>
       </div>
 
     </div>
