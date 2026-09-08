@@ -199,7 +199,7 @@ class BenchmarkAnalyzeRequest(BaseModel):
     base_cost: float = 0.94
     strategy_mode: str = "micro_pay" # free_traffic, micro_pay, strong_pay
     api_key: Optional[str] = None
-    deepseek_model: Optional[str] = "deepseek-chat" # deepseek-chat, deepseek-reasoner
+    deepseek_model: Optional[str] = "deepseek-chat" # deepseek-chat, deepseek-v4-flash, deepseek-reasoner
     custom_title: Optional[str] = None
     custom_skus: Optional[List[Dict[str, Any]]] = None
     express_fee: float = 1.8
