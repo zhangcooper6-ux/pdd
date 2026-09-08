@@ -425,19 +425,21 @@ class PddProductAnalyzer:
         material_fee: float = 0.1,
         labor_fee: float = 0.25,
         refund_rate: float = 0.15,
+        insurance_fee: float = 0.0,
         platform_commission_rate: float = 0.006,
         strategy_mode: str = "micro_pay",
-        golden_sku_matrix: Optional[Dict[str, Any]] = None
+        golden_sku_matrix: Optional[Dict[str, Any]] = None,
+        enable_intercept_pricing: bool = True
     ) -> Dict[str, Any]:
         """
         根据对标链接全量真实 SKU 价格与规格结构，精算“卡位截流”与“降维打击”最优策略：
         1. 保留全部原始对标规格名称与对应价格带（多行全量渲染）；
-        2. 针对每一个原始 SKU，设计我方打标升级的【截流建议售价】与【截流立减优惠】；
+        2. 针对每一个原始 SKU，设计我方打标升级的【截流建议售价】与【截流立减优惠】（支持开关：开启按截流算法计算，关闭沿用对标原价）；
         3. 推算对标链接全站推广的估计保本 ROI 与广告 Bid 出价，并给出出价压制 SOP。
         """
         if golden_sku_matrix is None:
             golden_sku_matrix = {}
-        fixed_pack = express_fee + material_fee + labor_fee
+        fixed_pack = express_fee + material_fee + labor_fee + insurance_fee
         deduct_factor = max(0.1, 1.0 - refund_rate - platform_commission_rate)
 
         # 1. 结构化处理全部原始 SKU，结合【黄金 4 阶梯 SKU 矩阵】与【倍率防违规】进行精准截流倒算
@@ -445,8 +447,8 @@ class PddProductAnalyzer:
         valid_prices = []
 
         # 结合基础成本与履约硬成本，倒算黄金 4 阶梯售价锚点
-        fixed_pack_cost = express_fee + material_fee + labor_fee
-        deduct = max(0.1, 1.0 - refund_rate - platform_commission_rate)
+        fixed_pack_cost = fixed_pack
+        deduct = deduct_factor
         golden_attr_p = max(8.9, round((((base_cost + fixed_pack_cost) + 0.8) / deduct) + 4.2, 1))
         golden_hero_p = round(golden_attr_p * 2.36, 1)
         golden_bulk_p = round(golden_attr_p * 3.03, 1)
@@ -456,36 +458,65 @@ class PddProductAnalyzer:
             orig_price = float(s.get("price", 0.0))
             if orig_price > 0:
                 valid_prices.append(orig_price)
+
+            # 解析 SKU 规格中的真实件数 qty
+            sku_qty = 1
+            if re.search(r"(\d+)\s*(?:个|件|把|套|双|支|盒|卷|包|瓶|罐|斤)", orig_name):
+                m_qty = re.search(r"(\d+)\s*(?:个|件|把|套|双|支|盒|卷|包|瓶|罐|斤)", orig_name)
+                sku_qty = int(m_qty.group(1))
+            elif "两把" in orig_name or "两件" in orig_name or "买一送一" in orig_name or "买1送1" in orig_name:
+                sku_qty = 2
+            elif "半打" in orig_name:
+                sku_qty = 6
+            elif "一打" in orig_name:
+                sku_qty = 12
             
-            # 截流定价逻辑：引入黄金 4 阶梯矩阵收益保底 (golden_bulk_p/golden_attr_p)
-            # 若黄金保底价高于对标原价折扣，出现负数差价，作为商家亏损与防亏红线预警！
-            if orig_price <= 4.0:
-                my_price = max(golden_attr_p, round(orig_price - 0.4, 2))
-                action_tag = "黄金引流卡位 (CTR)"
-            elif orig_price <= 10.0:
-                my_price = max(round(base_cost*2 + fixed_pack + 1.5, 2), round(orig_price - 0.6, 2))
-                action_tag = "买1送1高性价比 (CVR)"
-            elif orig_price <= 25.0:
-                my_price = min(round(orig_price - 1.2, 2), golden_hero_p)
-                action_tag = "黄金高溢价截流 (高ROI)"
+            if enable_intercept_pricing:
+                # 开启截流算法：引入黄金 4 阶梯矩阵收益保底 (golden_bulk_p/golden_attr_p)
+                # 若黄金保底价高于对标原价折扣，出现负数差价，作为商家亏损与防亏红线预警！
+                if orig_price <= 4.0:
+                    my_price = max(golden_attr_p, round(orig_price - 0.4, 2))
+                    action_tag = "黄金引流卡位 (CTR)"
+                elif orig_price <= 10.0:
+                    my_price = max(round(base_cost * sku_qty + fixed_pack + 1.5, 2), round(orig_price - 0.6, 2))
+                    action_tag = "买1送1高性价比 (CVR)"
+                elif orig_price <= 25.0:
+                    my_price = min(round(orig_price - 1.2, 2), golden_hero_p)
+                    action_tag = "黄金高溢价截流 (高ROI)"
+                else:
+                    # 黄金大堆头保底价 (如39.40元) 兜底，引发负数价格差预警
+                    my_price = max(golden_bulk_p, round(orig_price - 2.6, 2))
+                    action_tag = "大堆头防亏保底截流 (亏损预警)"
+
+                # 安全倍率拦截：避免跨 SKU 突破 4.4 倍率引发拼多多风控限流
+                if len(valid_prices) > 1:
+                    min_p = min(valid_prices)
+                    if my_price > min_p * 4.4:
+                        my_price = round(min_p * 4.4, 2)
             else:
-                # 黄金大堆头保底价 (如39.40元) 兜底，引发负数价格差预警
-                my_price = max(golden_bulk_p, round(orig_price - 2.6, 2))
-                action_tag = "大堆头防亏保底截流 (亏损预警)"
+                # 关闭截流算法：直接沿用对标原价
+                my_price = orig_price
+                if orig_price <= 4.0:
+                    action_tag = "对标原价引流"
+                elif orig_price <= 10.0:
+                    action_tag = "对标原价主推"
+                elif orig_price <= 25.0:
+                    action_tag = "对标原价品质款"
+                else:
+                    action_tag = "对标原价组合装"
 
-            # 安全倍率拦截：避免跨 SKU 突破 4.4 倍率引发拼多多风控限流
-            if len(valid_prices) > 1:
-                min_p = min(valid_prices)
-                if my_price > min_p * 4.4:
-                    my_price = round(min_p * 4.4, 2)
-
-            # 计算我方估算实际毛利
-            my_margin = round(my_price - (base_cost * 1.5 + fixed_pack) - (my_price * refund_rate) - (my_price * platform_commission_rate), 2)
-            my_roi = round(my_price / max(0.1, my_margin), 2)
+            # 严格按照电商标准精算实际毛利：售价 - (单件成本*件数) - 固定履约 - 预期退款损耗 - 平台扣点
+            goods_cost = round(base_cost * sku_qty, 2)
+            refund_loss = round(my_price * refund_rate, 4)
+            commission_fee = round(my_price * platform_commission_rate, 4)
+            my_margin = round(my_price - goods_cost - fixed_pack - refund_loss - commission_fee, 2)
+            my_roi = round(my_price / my_margin, 2) if my_margin > 0 else 99.0
 
             sku_comparison_list.append({
                 "orig_name": orig_name,
                 "orig_price": orig_price,
+                "sku_qty": sku_qty,
+                "goods_cost": goods_cost,
                 "my_intercept_price": my_price,
                 "action_tag": action_tag,
                 "price_diff": round(orig_price - my_price, 2),
@@ -493,33 +524,10 @@ class PddProductAnalyzer:
                 "my_roi": my_roi
             })
 
-        min_target_price = min(valid_prices) if valid_prices else 23.57
-        hero_target_price = 30.51
-        for s in benchmark_skus:
-            name = s.get("name", "")
-            if "2个" in name or "推荐" in name:
-                hero_target_price = float(s.get("price", 30.51))
-                break
-
-        my_attr_price = max(2.5, round(min_target_price - 0.67, 2))
-        my_hero_price = max(4.9, round(hero_target_price - 2.61, 2))
-        my_bulk_price = max(7.9, round(hero_target_price * 1.1, 2))
-
-        # 3. 截流精算与真实主力爆款保本 ROI 计算
-        benchmark_margin = hero_target_price - (base_cost * 2 + fixed_pack) - (hero_target_price * refund_rate) - (hero_target_price * platform_commission_rate)
-        target_est_roi = round(hero_target_price / max(0.1, benchmark_margin), 2)
-
-        my_hero_margin = my_hero_price - (base_cost * 2 + fixed_pack) - (my_hero_price * refund_rate) - (my_hero_price * platform_commission_rate)
-        my_breakeven_roi = round(my_hero_price / max(0.1, my_hero_margin), 2)
-        target_est_bid = round(hero_target_price / target_est_roi, 2)
-
-        # 动态将测算出的真实主力爆款保本 ROI 覆盖至黄金 SKU 矩阵汇总数据中
-        golden_sku_matrix["break_even_roi"] = my_breakeven_roi
-        my_bid_override = round(my_hero_price / (my_breakeven_roi * 0.8), 2)
-
         # 动态捕捉真实引流款 SKU (最低价项) 与真实主力爆款 SKU (价格居中/带有2个装/主力关键词)
         sorted_skus = sorted(sku_comparison_list, key=lambda x: x["orig_price"])
-        attr_sku = sorted_skus[0] if sorted_skus else {"orig_name": "引流款", "orig_price": min_target_price, "my_intercept_price": my_attr_price}
+        min_target_price = min(valid_prices) if valid_prices else 23.57
+        attr_sku = sorted_skus[0] if sorted_skus else {"orig_name": "引流款", "orig_price": min_target_price, "my_intercept_price": min_target_price, "sku_qty": 1, "my_margin": 1.0}
         
         # 寻找主力爆款 SKU：优先查找包含 '2个' 或 '主力' 或价格最接近 30元的项
         hero_sku = None
@@ -531,6 +539,24 @@ class PddProductAnalyzer:
             hero_sku = sorted_skus[len(sorted_skus) // 2]
         elif not hero_sku:
             hero_sku = attr_sku
+
+        hero_sku_qty = hero_sku.get("sku_qty", 2)
+        hero_target_price = hero_sku.get("orig_price", 30.51)
+        my_hero_price = hero_sku.get("my_intercept_price", hero_target_price)
+        my_bulk_price = round(hero_target_price * 1.1, 2)
+
+        # 3. 截流精算与真实主力爆款保本 ROI 计算
+        benchmark_goods_cost = round(base_cost * hero_sku_qty, 2)
+        benchmark_margin = round(hero_target_price - benchmark_goods_cost - fixed_pack - (hero_target_price * refund_rate) - (hero_target_price * platform_commission_rate), 2)
+        target_est_roi = round(hero_target_price / benchmark_margin, 2) if benchmark_margin > 0 else 99.0
+
+        my_hero_margin = hero_sku.get("my_margin", round(my_hero_price - benchmark_goods_cost - fixed_pack - (my_hero_price * refund_rate) - (my_hero_price * platform_commission_rate), 2))
+        my_breakeven_roi = round(my_hero_price / my_hero_margin, 2) if my_hero_margin > 0 else 99.0
+        target_est_bid = round(hero_target_price / target_est_roi, 2) if target_est_roi > 0 else 0.0
+
+        # 动态将测算出的真实主力爆款保本 ROI 覆盖至黄金 SKU 矩阵汇总数据中
+        golden_sku_matrix["break_even_roi"] = my_breakeven_roi
+        my_bid_override = round(my_hero_price / (my_breakeven_roi * 0.8), 2) if my_breakeven_roi > 0 else 0.0
 
         # 根据打法模式动态确定 14 天进阶 SOP 与全站推广出价
         if strategy_mode == "natural_flow":
@@ -589,6 +615,7 @@ class PddProductAnalyzer:
             ]
 
         return {
+            "enable_intercept_pricing": enable_intercept_pricing,
             "target_min_price": attr_sku["orig_price"],
             "target_hero_price": hero_sku["orig_price"],
             "my_attr_price": attr_sku["my_intercept_price"],

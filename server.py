@@ -4,6 +4,7 @@
 """
 
 import os
+import sys
 import io
 import pandas as pd
 from typing import Optional, Dict, Any, List
@@ -208,6 +209,7 @@ class BenchmarkAnalyzeRequest(BaseModel):
     refund_rate: float = 0.15
     insurance_fee: float = 0.0
     platform_commission_rate: float = 0.006
+    enable_intercept_pricing: bool = True
 
 @app.post("/api/pdd/analyze-benchmark")
 async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
@@ -252,9 +254,11 @@ async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
             material_fee=req.material_fee,
             labor_fee=req.labor_fee,
             refund_rate=req.refund_rate,
+            insurance_fee=req.insurance_fee,
             platform_commission_rate=req.platform_commission_rate,
             strategy_mode=req.strategy_mode,
-            golden_sku_matrix=sku_matrix
+            golden_sku_matrix=sku_matrix,
+            enable_intercept_pricing=req.enable_intercept_pricing
         )
         sku_matrix["interception_strategy"] = interception
         
@@ -405,5 +409,15 @@ if os.path.exists(WEB_DIR):
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 正在启动全域电商经营助手前后端独立服务: http://127.0.0.1:8888")
+    if sys.stdout is not None and hasattr(sys.stdout, 'reconfigure'):
+        try:
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        except Exception:
+            pass
+    if sys.stderr is not None and hasattr(sys.stderr, 'reconfigure'):
+        try:
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+        except Exception:
+            pass
+    print("正在启动全域电商经营助手前后端独立服务: http://127.0.0.1:8888")
     uvicorn.run(app, host="127.0.0.1", port=8888)

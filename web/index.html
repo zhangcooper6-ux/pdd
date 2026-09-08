@@ -685,19 +685,26 @@
             <button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="fillSampleUrl('98765432101')">示例2: 爆款保温杯</button>
           </div>
 
-          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: rgba(15, 23, 42, 0.6); padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <input type="checkbox" id="enableAiModelCheckbox" onchange="toggleAiModelSwitch()" style="cursor: pointer; accent-color: #38bdf8; width: 14px; height: 14px;">
-              <label for="enableAiModelCheckbox" style="cursor: pointer; font-size: 11px; font-weight: bold; color: #f8fafc; margin: 0;">🤖 启用AI大模型增强</label>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 6px; background: rgba(15, 23, 42, 0.6); padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.25);">
+              <input type="checkbox" id="enableInterceptPricingCheckbox" checked style="cursor: pointer; accent-color: #38bdf8; width: 15px; height: 15px;">
+              <label for="enableInterceptPricingCheckbox" style="cursor: pointer; font-size: 11px; font-weight: bold; color: #38bdf8; margin: 0;" title="开启：执行卡位破局截流算法计算我方拼单价；关闭：直接沿用对标原价">⚡ 启用截流拼单价算法 (关则沿用对标原价)</label>
             </div>
-            <div id="aiModelConfigGroup" style="display: none; align-items: center; gap: 6px;">
-              <select class="form-select" id="deepseekModelSelect" onchange="saveAiConfig()" style="padding: 3px 6px; font-size: 11px; width: 165px; background: #0b1120; color: #38bdf8; border: 1px solid #1e293b;">
-                <option value="deepseek-chat" selected>deepseek-chat (通用V3)</option>
-                <option value="deepseek-v4-flash">⚡ deepseek-v4-flash (极速)</option>
-                <option value="deepseek-reasoner">🧠 deepseek-reasoner (R1思考)</option>
-              </select>
-              <input type="password" class="form-input" id="deepseekApiKey" placeholder="输入并持久化 sk-..." oninput="saveAiConfig()" style="padding: 3px 8px; font-size: 11px; width: 170px;">
-              <span id="aiKeySavedToast" style="font-size: 10px; color: #34d399; display: none;">✅ 已保存</span>
+
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: rgba(15, 23, 42, 0.6); padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <input type="checkbox" id="enableAiModelCheckbox" onchange="toggleAiModelSwitch()" style="cursor: pointer; accent-color: #38bdf8; width: 14px; height: 14px;">
+                <label for="enableAiModelCheckbox" style="cursor: pointer; font-size: 11px; font-weight: bold; color: #f8fafc; margin: 0;">🤖 启用AI大模型增强</label>
+              </div>
+              <div id="aiModelConfigGroup" style="display: none; align-items: center; gap: 6px;">
+                <select class="form-select" id="deepseekModelSelect" onchange="saveAiConfig()" style="padding: 3px 6px; font-size: 11px; width: 165px; background: #0b1120; color: #38bdf8; border: 1px solid #1e293b;">
+                  <option value="deepseek-chat" selected>deepseek-chat (通用V3)</option>
+                  <option value="deepseek-v4-flash">⚡ deepseek-v4-flash (极速)</option>
+                  <option value="deepseek-reasoner">🧠 deepseek-reasoner (R1思考)</option>
+                </select>
+                <input type="password" class="form-input" id="deepseekApiKey" placeholder="输入并持久化 sk-..." oninput="saveAiConfig()" style="padding: 3px 8px; font-size: 11px; width: 170px;">
+                <span id="aiKeySavedToast" style="font-size: 10px; color: #34d399; display: none;">✅ 已保存</span>
+              </div>
             </div>
           </div>
         </div>
@@ -929,10 +936,12 @@
               <span style="font-size: 12px; color: #94a3b8;">⚙️ 算价模式选择:</span>
               <select id="pricingAlgorithmSelect" class="form-input" style="padding: 3px 8px; font-size: 12px; width: auto; background: #1e293b; color: #f8fafc; border: 1px solid #475569; border-radius: 6px;" onchange="changePricingAlgorithmMode()">
                 <option value="golden" selected>💎 经典黄金 4 阶梯算法 (常规中高溢价/高毛利)</option>
+                <option value="mid_range_natural_flow">🔥 中低成本黄金自然流算法 (2~8元/保本微利卡位+买1送1转单)</option>
+                <option value="mid_range_high_margin">👑 中低成本高毛利开车算法 (2~8元/单单留足7~12元毛利/低ROI爆量)</option>
                 <option value="ultra_low_cost">⚡ 极致性价比自然流算法 (≤2元低价卡位/9.9包邮/破零)</option>
-                <option value="mid_cost_natural_flow">🔥 中客单性价比自然流算法 (8~15元高质/防亏起盘)</option>
-                <option value="mid_cost_high_margin">👑 中客单高溢价高转化算法 (8~15元强付费爆量/大毛利破局)</option>
-                <option value="marginal_logistics">📦 边际运费多件套算法 (≤2元运费均摊/多件高毛利开车)</option>
+                <option value="mid_cost_natural_flow">📦 中大客单性价比自然流算法 (8~15元高质/防亏起盘)</option>
+                <option value="mid_cost_high_margin">✨ 中大客单高溢价强付费算法 (8~15元高奢重塑/大毛利破局)</option>
+                <option value="marginal_logistics">🚚 边际运费多件套算法 (≤2元运费均摊/多件高毛利开车)</option>
                 <option value="custom">✏️ 自主自定义模式 (纯手工自由输入)</option>
               </select>
             </div>
@@ -1401,6 +1410,32 @@
         ],
         budgetGuide: "每日预算建议 50 ~ 100 元，起步测款备用金 300 ~ 500 元。保本 ROI 区间 1.75 ~ 2.20，退款率预估 12%~15%。"
       },
+      mid_range_natural_flow: {
+        title: "🔥 2~8元中低成本黄金自然流算法 · 玩法 SOP 与预算策略",
+        themeColor: "#f97316",
+        badge: "专为采购成本 2~8 元主流货品自然流定制",
+        summary: "拒绝低价亏损！1件尝鲜装 8.9~11.9 元保本微利卡位抢点击 (CTR)，主力款用【买1送1 / 2件套】标 14.9~18.9 元（省1份快递费，折合单件更省）承接 80% 转化 (CVR)，靠高转化撬动平台免费搜索与推荐大盘！",
+        sopSteps: [
+          { phase: "1. 尝鲜装卡位破零 (第1-3天)", desc: "单件装按真实硬成本+1.5~2.0元微利精准卡位在 8.9~11.9 元，限购1件；补 3~5 单买家秀带图好评破零，不开启付费推广。" },
+          { phase: "2. 买1送1高转化起跑 (第4-7天)", desc: "主图打标'拍1发2实惠装+送运费险'，拼单价 15.9~17.9 元搭 2 元立减券到手 13.9~15.9 元，买家觉得超划算，CVR 直接翻倍！" },
+          { phase: "3. 提报大促立减与拼单返现 (第8-14天)", desc: "报名平台【新客立减】与【拼单返现】高权重红标活动，利用微赠品（收纳袋/防尘盖）防比价，承接系统推荐流。" },
+          { phase: "4. 3~4件家庭装收割高客单 (第15天+)", desc: "多件套定价 23.9~29.9 元搭 3~4 元券，单客毛利拉升至 8~12 元，实现 0 广告费纯靠自然流稳出单！" }
+        ],
+        budgetGuide: "单款启动备用金仅需 150 ~ 250 元。保本 ROI 约 2.2 ~ 2.6，退款率预估 8%~12%，主打稳定走量不亏钱。"
+      },
+      mid_range_high_margin: {
+        title: "👑 2~8元中低成本高毛利开车算法 · 玩法 SOP 与预算策略",
+        themeColor: "#a855f7",
+        badge: "专为采购成本 2~8 元全站推广强付费起爆定制",
+        summary: "单件装标 13.9~15.9 元作高价对比锚点；核心主推【买1送1加厚版】标 19.9~23.9 元，单单留足 7~11 元充沛毛利，将保本 ROI 压低至 1.8~2.1，在全站竞价池中以 8~10 元/单高出价暴力抢爆同行曝光！",
+        sopSteps: [
+          { phase: "1. 视觉升级与锚点设立 (第1-3天)", desc: "主图突出'加厚耐磨+质检认证'品质标签，单件装标 14.9 作价格对比衬托；补 5 单实拍开箱好评，沉淀基础销量。" },
+          { phase: "2. 全站强付费高出价碾压 (第4-7天)", desc: "全站推广日预算 100~200 元，目标 ROI 设在 1.60~1.80（低于保本点放量），单单广告出价 8~11 元暴力吃透类目大词搜索位！" },
+          { phase: "3. 增值防退护城河 (第8-14天)", desc: "主推款附赠运费险与破损包赔，利用供应链包材红利抵御售后损耗，稳固 5 星好评率。" },
+          { phase: "4. 小碎步拖价放大纯利 (第15天+)", desc: "链接权重爆发后，每日早晨将全站目标 ROI 上调 0.05~0.10（逐步拖价至 2.4~2.8），单日百单稳收 600~1200 元纯利润！" }
+        ],
+        budgetGuide: "单款启动备用金建议 400 ~ 600 元。保本 ROI 仅 1.80 ~ 2.10，广告出价宽容度极高，适合追求快速起爆的付费打法。"
+      },
       ultra_low_cost: {
         title: "⚡ 极致性价比自然流算法 · 玩法 SOP 与预算策略",
         themeColor: "#38bdf8",
@@ -1534,6 +1569,14 @@
         badge.className = "badge badge-success";
         if (badgeText !== badge) badgeText.innerText = "💎 经典黄金4阶梯"; else badge.innerText = "💎 经典黄金4阶梯 📖 玩法SOP ℹ️";
         showToast("💎 已切换为【经典黄金 4 阶梯算法】：适合中高溢价常规商品", "success");
+      } else if (currentPricingAlgoMode === 'mid_range_natural_flow') {
+        badge.className = "badge badge-warning";
+        if (badgeText !== badge) badgeText.innerText = "🔥 2~8元黄金自然流"; else badge.innerText = "🔥 2~8元黄金自然流 📖 玩法SOP ℹ️";
+        showToast("🔥 已切换为【2~8元中低成本黄金自然流算法】：真实保本微利卡位 + 买1送1高转化打爆免费搜推！", "success");
+      } else if (currentPricingAlgoMode === 'mid_range_high_margin') {
+        badge.className = "badge badge-danger";
+        if (badgeText !== badge) badgeText.innerText = "👑 2~8元高毛利开车"; else badge.innerText = "👑 2~8元高毛利开车 📖 玩法SOP ℹ️";
+        showToast("👑 已切换为【2~8元中低成本高毛利开车算法】：单单留足7~12元毛利，压低保本ROI，全站高出价强吃曝光！", "success");
       } else if (currentPricingAlgoMode === 'ultra_low_cost') {
         badge.className = "badge badge-primary";
         if (badgeText !== badge) badgeText.innerText = "⚡ 极致性价比走量"; else badge.innerText = "⚡ 极致性价比走量 📖 玩法SOP ℹ️";
@@ -1608,7 +1651,11 @@
 
     // 算法调度器
     function dispatchSkuPricingAlgorithm(qty, uCost, skuName, idx) {
-      if (currentPricingAlgoMode === 'ultra_low_cost') {
+      if (currentPricingAlgoMode === 'mid_range_natural_flow') {
+        return calculateMidRangeNaturalFlowPricing(qty, uCost, skuName, idx);
+      } else if (currentPricingAlgoMode === 'mid_range_high_margin') {
+        return calculateMidRangeHighMarginPricing(qty, uCost, skuName, idx);
+      } else if (currentPricingAlgoMode === 'ultra_low_cost') {
         return calculateUltraLowCostPricing(qty, uCost, skuName, idx);
       } else if (currentPricingAlgoMode === 'mid_cost_natural_flow') {
         return calculateMidCostNaturalFlowPricing(qty, uCost, skuName, idx);
@@ -1620,6 +1667,96 @@
         return null;
       }
       return calculateGoldenSkuPricing(qty, uCost, skuName, idx);
+    }
+
+    // 算法 A：2~8 元中低成本黄金性价比自然流算法 (保本微利卡位 + 买1送1引爆转化)
+    function calculateMidRangeNaturalFlowPricing(qty, uCost, skuName, idx) {
+      const express = parseFloat(document.getElementById('calcExpressFee').value) || 1.8;
+      const material = parseFloat(document.getElementById('calcMaterialFee').value) || 0.1;
+      const labor = parseFloat(document.getElementById('calcLaborFee').value) || 0.25;
+      const refund = (parseFloat(document.getElementById('calcRefundRate').value) || 10) / 100;
+      const insurance = parseFloat(document.getElementById('calcInsuranceFee').value) || 0;
+      const commVal = document.getElementById('calcCommissionRate').value;
+      const commission = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
+
+      const fixedPackCost = express + material + labor + insurance;
+      const deductFactor = Math.max(0.1, 1.0 - refund - commission);
+
+      let sellingPrice = 8.9;
+      let couponAmount = 1.0;
+
+      if (qty === 1) {
+        // 1件装：保本微利精准卡位 (目标留 1.6~2.0 元微利，售价通常在 8.9~12.9 元，抢夺列表 CTR)
+        const targetProfit = 1.8;
+        const raw = ((uCost * 1 + fixedPackCost) + targetProfit) / deductFactor;
+        sellingPrice = Math.max(8.9, Math.round(raw * 10) / 10);
+        couponAmount = 1.0;
+      } else if (qty === 2) {
+        // 2件装：核心爆款主推 (利用省下的1份快递费，单单留 4.5~5.5 元毛利，买家折合单件比单买便宜2~3元，CVR拉爆)
+        const targetProfit = 5.0;
+        const raw = ((uCost * 2 + fixedPackCost) + targetProfit) / deductFactor;
+        sellingPrice = Math.max(14.9, Math.round(raw * 10) / 10);
+        couponAmount = 2.0;
+      } else if (qty === 3) {
+        // 3件装：家庭实惠装 (单单留 8.5~10.0 元毛利)
+        const targetProfit = 9.0;
+        const raw = ((uCost * 3 + fixedPackCost) + targetProfit) / deductFactor;
+        sellingPrice = Math.max(22.9, Math.round(raw * 10) / 10);
+        couponAmount = 3.0;
+      } else {
+        // 4件及以上：大件组合装 (每多1件递增 2.5 元毛利)
+        const targetProfit = 9.0 + (qty - 3) * 2.8;
+        const raw = ((uCost * qty + fixedPackCost) + targetProfit) / deductFactor;
+        sellingPrice = Math.round(raw * 10) / 10;
+        couponAmount = Math.min(6.0, 3.0 + (qty - 3) * 1.5);
+      }
+
+      return { selling_price: sellingPrice, coupon_amount: couponAmount };
+    }
+
+    // 算法 B：2~8 元中低成本高毛利开车算法 (单单留足 7~12 元毛利，保本 ROI 低至 1.8~2.1，强付费暴力起盘)
+    function calculateMidRangeHighMarginPricing(qty, uCost, skuName, idx) {
+      const express = parseFloat(document.getElementById('calcExpressFee').value) || 1.8;
+      const material = parseFloat(document.getElementById('calcMaterialFee').value) || 0.1;
+      const labor = parseFloat(document.getElementById('calcLaborFee').value) || 0.25;
+      const refund = (parseFloat(document.getElementById('calcRefundRate').value) || 12) / 100;
+      const insurance = parseFloat(document.getElementById('calcInsuranceFee').value) || 0;
+      const commVal = document.getElementById('calcCommissionRate').value;
+      const commission = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
+
+      const fixedPackCost = express + material + labor + insurance;
+      const deductFactor = Math.max(0.1, 1.0 - refund - commission);
+
+      let sellingPrice = 13.9;
+      let couponAmount = 2.0;
+
+      if (qty === 1) {
+        // 1件装：作为价格对比锚点 (留 4.5~5.5 元毛利，标 13.9~16.9 元，让买家觉得买单件不划算)
+        const targetProfit = 5.0;
+        const raw = ((uCost * 1 + fixedPackCost) + targetProfit) / deductFactor;
+        sellingPrice = Math.max(13.9, Math.round(raw * 10) / 10);
+        couponAmount = 1.5;
+      } else if (qty === 2) {
+        // 2件装：核心开车主力款！(留足 8.5~10.5 元充沛毛利，拼单价 19.9~24.9 元，配 3 元券到手 16.9~21.9 元，保本 ROI 压至 1.8~2.0)
+        const targetProfit = 9.5;
+        const raw = ((uCost * 2 + fixedPackCost) + targetProfit) / deductFactor;
+        sellingPrice = Math.max(19.9, Math.round(raw * 10) / 10);
+        couponAmount = 3.0;
+      } else if (qty === 3) {
+        // 3件装：豪华升级装 (留足 14~16 元高毛利)
+        const targetProfit = 15.0;
+        const raw = ((uCost * 3 + fixedPackCost) + targetProfit) / deductFactor;
+        sellingPrice = Math.max(29.9, Math.round(raw * 10) / 10);
+        couponAmount = 4.0;
+      } else {
+        // 4件及以上：高客单收割款 (每件递增 4.5 元毛利)
+        const targetProfit = 15.0 + (qty - 3) * 4.5;
+        const raw = ((uCost * qty + fixedPackCost) + targetProfit) / deductFactor;
+        sellingPrice = Math.round(raw * 10) / 10;
+        couponAmount = Math.min(8.0, 4.0 + (qty - 3) * 2.0);
+      }
+
+      return { selling_price: sellingPrice, coupon_amount: couponAmount };
     }
 
     // 算法 1：极致性价比自然流跑量算法 (≤2元低价卡位/9.9以下包邮/极低退款/打爆自然搜推)
@@ -2336,6 +2473,7 @@
         const insuranceFee = parseFloat(document.getElementById('pddInsuranceFee').value) || parseFloat(document.getElementById('calcInsuranceFee').value) || 0;
         const commVal = document.getElementById('pddCommissionRate').value || document.getElementById('calcCommissionRate').value;
         const commissionRate = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
+        const enableInterceptPricing = document.getElementById('enableInterceptPricingCheckbox') ? document.getElementById('enableInterceptPricingCheckbox').checked : true;
 
         const res = await fetch('/api/pdd/analyze-benchmark', {
           method: 'POST',
@@ -2353,7 +2491,8 @@
             labor_fee: laborFee,
             refund_rate: refundRate,
             insurance_fee: insuranceFee,
-            platform_commission_rate: commissionRate
+            platform_commission_rate: commissionRate,
+            enable_intercept_pricing: enableInterceptPricing
           })
         });
 
@@ -2469,20 +2608,17 @@
         interceptionList.forEach(item => {
           const tr = document.createElement('tr');
           const baseCostVal = parseFloat(document.getElementById('pddCostInput').value);
-          const costVal = (!isNaN(baseCostVal) && baseCostVal > 0) ? baseCostVal : (
+          const unitCost = (!isNaN(baseCostVal) && baseCostVal > 0) ? baseCostVal : (
             (data.golden_sku_matrix && data.golden_sku_matrix.skus && data.golden_sku_matrix.skus[0]) 
               ? Number(data.golden_sku_matrix.skus[0].cost || 0.94) 
               : 0.94
           );
           
+          const qty = item.sku_qty || 1;
+          const totalGoodsCost = item.goods_cost !== undefined ? item.goods_cost : (unitCost * qty);
+
           const isMin = item.orig_price <= 25.0 && item.orig_price < 29.0;
           const isHero = item.orig_name.includes('2个') || item.orig_name.includes('推荐');
-
-          let qty = 1;
-          const name = item.orig_name || '';
-          if (name.includes('4个') || name.includes('4件')) qty = 4;
-          else if (name.includes('3个') || name.includes('3件')) qty = 3;
-          else if (name.includes('2个') || name.includes('2件') || name.includes('两把')) qty = 2;
 
           tr.innerHTML = `
             <td><span class="badge ${isMin ? 'badge-info' : isHero ? 'badge-success' : 'badge-warning'}">${item.action_tag}</span></td>
@@ -2491,9 +2627,9 @@
             <td style="color:#f59e0b; font-weight:bold;">¥${item.orig_price.toFixed(2)}</td>
             <td style="color:#34d399; font-weight:bold; font-size:14px;">¥${item.my_intercept_price.toFixed(2)}</td>
             <td style="color:${item.price_diff >= 0 ? '#38bdf8' : '#f87171'}; font-weight:bold;">${item.price_diff >= 0 ? '-' : '+' }¥${Math.abs(item.price_diff).toFixed(2)}</td>
-            <td>¥${costVal.toFixed(2)}</td>
-            <td style="color:#60a5fa; font-weight:bold;">¥${item.my_margin.toFixed(2)}</td>
-            <td style="font-size:12px; color:#cbd5e1;">打标升级品质/送运费险，直接截断对应对标项流量</td>
+            <td>¥${totalGoodsCost.toFixed(2)} <span style="font-size:10px; color:#94a3b8;">(${qty}x¥${unitCost.toFixed(2)})</span></td>
+            <td style="color:${item.my_margin >= 0 ? '#60a5fa' : '#f87171'}; font-weight:bold;">¥${item.my_margin.toFixed(2)}</td>
+            <td style="font-size:12px; color:#cbd5e1;">保本ROI: <strong style="color:#fbbf24;">${item.my_roi ? item.my_roi.toFixed(2) : '-'}</strong> (${item.action_tag})</td>
           `;
           skuTbody.appendChild(tr);
         });

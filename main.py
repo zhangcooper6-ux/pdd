@@ -8,6 +8,12 @@ import sys
 import argparse
 import pandas as pd
 
+if sys.stdout is not None and hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 # 引入项目模块
 from ecommerce_assistant.analyzer import MetricNormalizer, OmnichannelAnalyzer
 from ecommerce_assistant.data_generator import generate_omnichannel_dataset
