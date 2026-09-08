@@ -683,9 +683,9 @@ class PddProductAnalyzer:
         return goods_commit_data
 
     @staticmethod
-    def call_deepseek_refine(prompt_content: str, api_key: Optional[str] = None) -> Dict[str, Any]:
+    def call_deepseek_refine(prompt_content: str, api_key: Optional[str] = None, model_name: str = "deepseek-chat") -> Dict[str, Any]:
         """
-        调用 DeepSeek API 进行高阶文案、主图文案或起爆策略重构 (若未配置API Key则使用离线启发式专业规则)
+        调用 DeepSeek API 进行高阶文案、主图文案或起爆策略重构 (支持自定义模型: deepseek-chat, deepseek-reasoner 等)
         """
         if not api_key:
             return {
@@ -694,6 +694,7 @@ class PddProductAnalyzer:
                 "analysis": "基于拼多多千川/全站流量竞价模型完成重构。"
             }
         
+        selected_model = model_name if model_name else "deepseek-chat"
         try:
             url = "https://api.deepseek.com/chat/completions"
             headers = {
@@ -701,7 +702,7 @@ class PddProductAnalyzer:
                 "Authorization": f"Bearer {api_key}"
             }
             body = {
-                "model": "deepseek-chat",
+                "model": selected_model,
                 "messages": [
                     {"role": "system", "content": "你是一名精通拼多多底层算法、全站推广起爆与合规防封店的顶尖电商操盘手。"},
                     {"role": "user", "content": prompt_content}
@@ -709,15 +710,17 @@ class PddProductAnalyzer:
                 "temperature": 0.7
             }
             req = urllib.request.Request(url, data=json.dumps(body).encode('utf-8'), headers=headers)
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(req, timeout=15) as resp:
                 result = json.loads(resp.read().decode('utf-8'))
                 return {
                     "used_mode": "deepseek_api",
-                    "content": result['choices'][0]['message']['content']
+                    "model": selected_model,
+                    "analysis": result["choices"][0]["message"]["content"]
                 }
         except Exception as e:
             return {
                 "used_mode": "fallback_offline",
+                "model": selected_model,
                 "error": str(e),
-                "message": "DeepSeek API 调用遇到网络或鉴权异常，已自动回退到本地离线专家系统。"
+                "message": f"DeepSeek API 调用失败 ({str(e)})，已自动切换为本地启发式专家规则。"
             }

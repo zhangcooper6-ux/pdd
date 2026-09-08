@@ -196,9 +196,10 @@ async def download_template():
 # 定义对标请求体
 class BenchmarkAnalyzeRequest(BaseModel):
     url_or_text: str
-    base_cost: float = 4.5
+    base_cost: float = 0.94
     strategy_mode: str = "micro_pay" # free_traffic, micro_pay, strong_pay
     api_key: Optional[str] = None
+    deepseek_model: Optional[str] = "deepseek-chat" # deepseek-chat, deepseek-reasoner
     custom_title: Optional[str] = None
     custom_skus: Optional[List[Dict[str, Any]]] = None
     express_fee: float = 1.8
@@ -263,12 +264,13 @@ async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
         # 6. 生成拼多多合规上架MMS数据
         mms_data = PddProductAnalyzer.generate_pdd_import_schema(titles["title_plans"][0]["title"], sku_matrix["skus"])
         
-        # 7. 可选调用 DeepSeek
+        # 7. 可选调用 DeepSeek (支持自定义模型选择: deepseek-chat / deepseek-reasoner)
         deepseek_res = None
         if req.api_key:
             deepseek_res = PddProductAnalyzer.call_deepseek_refine(
                 f"请针对对标商品【{raw_info['raw_title']}】，结合微付费/强付费起爆SOP，生成一套更具杀伤力的高点击差异化卖点和评价引流方案。",
-                req.api_key
+                req.api_key,
+                model_name=req.deepseek_model or "deepseek-chat"
             )
 
         return {

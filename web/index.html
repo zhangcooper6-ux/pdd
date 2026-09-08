@@ -685,9 +685,13 @@
             <button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="fillSampleUrl('98765432101')">示例2: 爆款保温杯</button>
           </div>
 
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <span>DeepSeek API Key (可选):</span>
-            <input type="password" class="form-input" id="deepseekApiKey" placeholder="sk-..." style="padding: 4px 8px; font-size: 11px; width: 180px;">
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <span>🤖 大模型 (可选):</span>
+            <select class="form-select" id="deepseekModelSelect" style="padding: 4px 8px; font-size: 11px; width: 155px; background: #0b1120; color: #38bdf8; border: 1px solid #1e293b;">
+              <option value="deepseek-chat" selected>deepseek-chat (通用快速V3)</option>
+              <option value="deepseek-reasoner">deepseek-reasoner (深度思考R1)</option>
+            </select>
+            <input type="password" class="form-input" id="deepseekApiKey" placeholder="sk-..." style="padding: 4px 8px; font-size: 11px; width: 160px;">
           </div>
         </div>
       </div>
@@ -2268,6 +2272,7 @@
       if (singleUnitCostEl) singleUnitCostEl.value = baseCost;
       const mode = document.getElementById('pddModeSelect').value;
       const apiKey = document.getElementById('deepseekApiKey').value.trim() || undefined;
+      const deepseekModel = document.getElementById('deepseekModelSelect') ? document.getElementById('deepseekModelSelect').value : 'deepseek-chat';
 
       // 智能识别单行/多行混合文本：支持空格分隔（如 "标题 https://..."）或换行分隔
       let customTitle = document.getElementById('customTargetTitle').value.trim() || undefined;
@@ -2330,6 +2335,7 @@
             base_cost: baseCost,
             strategy_mode: mode,
             api_key: apiKey,
+            deepseek_model: deepseekModel,
             custom_title: customTitle,
             custom_skus: customSkus,
             express_fee: expressFee,
