@@ -685,14 +685,20 @@
             <button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="fillSampleUrl('98765432101')">示例2: 爆款保温杯</button>
           </div>
 
-          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <span>🤖 大模型 (可选):</span>
-            <select class="form-select" id="deepseekModelSelect" style="padding: 4px 8px; font-size: 11px; width: 175px; background: #0b1120; color: #38bdf8; border: 1px solid #1e293b;">
-              <option value="deepseek-chat" selected>deepseek-chat (通用快速V3)</option>
-              <option value="deepseek-v4-flash">⚡ deepseek-v4-flash (极速超低延迟)</option>
-              <option value="deepseek-reasoner">🧠 deepseek-reasoner (深度思考R1)</option>
-            </select>
-            <input type="password" class="form-input" id="deepseekApiKey" placeholder="sk-..." style="padding: 4px 8px; font-size: 11px; width: 160px;">
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: rgba(15, 23, 42, 0.6); padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="checkbox" id="enableAiModelCheckbox" onchange="toggleAiModelSwitch()" style="cursor: pointer; accent-color: #38bdf8; width: 14px; height: 14px;">
+              <label for="enableAiModelCheckbox" style="cursor: pointer; font-size: 11px; font-weight: bold; color: #f8fafc; margin: 0;">🤖 启用AI大模型增强</label>
+            </div>
+            <div id="aiModelConfigGroup" style="display: none; align-items: center; gap: 6px;">
+              <select class="form-select" id="deepseekModelSelect" onchange="saveAiConfig()" style="padding: 3px 6px; font-size: 11px; width: 165px; background: #0b1120; color: #38bdf8; border: 1px solid #1e293b;">
+                <option value="deepseek-chat" selected>deepseek-chat (通用V3)</option>
+                <option value="deepseek-v4-flash">⚡ deepseek-v4-flash (极速)</option>
+                <option value="deepseek-reasoner">🧠 deepseek-reasoner (R1思考)</option>
+              </select>
+              <input type="password" class="form-input" id="deepseekApiKey" placeholder="输入并持久化 sk-..." oninput="saveAiConfig()" style="padding: 3px 8px; font-size: 11px; width: 170px;">
+              <span id="aiKeySavedToast" style="font-size: 10px; color: #34d399; display: none;">✅ 已保存</span>
+            </div>
           </div>
         </div>
       </div>
@@ -2272,7 +2278,10 @@
       const singleUnitCostEl = document.getElementById('singleUnitCost');
       if (singleUnitCostEl) singleUnitCostEl.value = baseCost;
       const mode = document.getElementById('pddModeSelect').value;
-      const apiKey = document.getElementById('deepseekApiKey').value.trim() || undefined;
+      
+      // 检查是否开启 AI 大模型开关并提取持久化 API Key
+      const isAiEnabled = document.getElementById('enableAiModelCheckbox') ? document.getElementById('enableAiModelCheckbox').checked : false;
+      const apiKey = isAiEnabled ? (document.getElementById('deepseekApiKey').value.trim() || undefined) : undefined;
       const deepseekModel = document.getElementById('deepseekModelSelect') ? document.getElementById('deepseekModelSelect').value : 'deepseek-chat';
 
       // 智能识别单行/多行混合文本：支持空格分隔（如 "标题 https://..."）或换行分隔
@@ -2914,6 +2923,75 @@
         if (loading) loading.innerHTML = '<div style="color:#ef4444;">❌ 载入网络异常: ' + err.message + '</div>';
       }
     }
+
+    // AI 大模型配置持久化与开关控制
+    function toggleAiModelSwitch() {
+      const checkbox = document.getElementById('enableAiModelCheckbox');
+      const configGroup = document.getElementById('aiModelConfigGroup');
+      if (!checkbox || !configGroup) return;
+      
+      if (checkbox.checked) {
+        configGroup.style.display = 'flex';
+        localStorage.setItem('pdd_ai_enabled', 'true');
+        showToast("已开启 AI 大模型增强模式");
+      } else {
+        configGroup.style.display = 'none';
+        localStorage.setItem('pdd_ai_enabled', 'false');
+        showToast("已切换为本地拼多多专家规则引擎 (离线/零延迟)");
+      }
+    }
+
+    function saveAiConfig() {
+      const keyInput = document.getElementById('deepseekApiKey');
+      const modelSelect = document.getElementById('deepseekModelSelect');
+      const toast = document.getElementById('aiKeySavedToast');
+      
+      if (keyInput) {
+        localStorage.setItem('pdd_deepseek_api_key', keyInput.value.trim());
+      }
+      if (modelSelect) {
+        localStorage.setItem('pdd_deepseek_model', modelSelect.value);
+      }
+      
+      if (toast) {
+        toast.style.display = 'inline';
+        setTimeout(() => { toast.style.display = 'none'; }, 2000);
+      }
+    }
+
+    function initAiConfigFromStorage() {
+      const savedEnabled = localStorage.getItem('pdd_ai_enabled');
+      const savedKey = localStorage.getItem('pdd_deepseek_api_key');
+      const savedModel = localStorage.getItem('pdd_deepseek_model');
+      
+      const checkbox = document.getElementById('enableAiModelCheckbox');
+      const configGroup = document.getElementById('aiModelConfigGroup');
+      const keyInput = document.getElementById('deepseekApiKey');
+      const modelSelect = document.getElementById('deepseekModelSelect');
+      
+      if (savedKey && keyInput) {
+        keyInput.value = savedKey;
+      }
+      if (savedModel && modelSelect) {
+        modelSelect.value = savedModel;
+      }
+      
+      if (checkbox && configGroup) {
+        if (savedEnabled === 'true') {
+          checkbox.checked = true;
+          configGroup.style.display = 'flex';
+        } else {
+          checkbox.checked = false;
+          configGroup.style.display = 'none';
+        }
+      }
+    }
+
+    // 页面加载完成后自动初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      initAiConfigFromStorage();
+      initAlgoSopHoverEvents();
+    });
 
     function downloadReadmeFile() {
       if (!cachedReadmeMarkdown) {
