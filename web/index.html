@@ -380,24 +380,31 @@
     .form-group {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
+      min-width: 0;
     }
 
     .form-label {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
-      color: #cbd5e1;
+      color: #94a3b8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .form-input, .form-select {
       background: #090d16;
       border: 1px solid #334155;
       color: #f8fafc;
-      padding: 10px 14px;
+      padding: 8px 10px;
       border-radius: 8px;
-      font-size: 13px;
+      font-size: 12.5px;
       outline: none;
       transition: all 0.2s;
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
     }
 
     .form-input:focus, .form-select:focus {
@@ -1018,87 +1025,87 @@
             </div>
 
             <!-- 履约参数网格 (2列紧凑排布) -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
               <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" style="font-size: 11px;">基础快递 (元)：</label>
-                <input type="number" class="form-input" id="calcExpressFee" value="1.80" step="0.1" style="padding: 4px 8px; font-size: 12px;" onchange="onGlobalPricingParamChange()">
+                <label class="form-label">基础快递(元)：</label>
+                <input type="number" class="form-input" id="calcExpressFee" value="1.80" step="0.1" style="padding: 4px 6px; font-size: 11.5px;" onchange="onGlobalPricingParamChange()">
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" style="font-size: 11px;">包装耗材 (元)：</label>
-                <input type="number" class="form-input" id="calcMaterialFee" value="0.10" step="0.05" style="padding: 4px 8px; font-size: 12px;" onchange="onGlobalPricingParamChange()">
+                <label class="form-label">包装耗材(元)：</label>
+                <input type="number" class="form-input" id="calcMaterialFee" value="0.10" step="0.05" style="padding: 4px 6px; font-size: 11.5px;" onchange="onGlobalPricingParamChange()">
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" style="font-size: 11px;">人工打包 (元)：</label>
-                <input type="number" class="form-input" id="calcLaborFee" value="0.25" step="0.05" style="padding: 4px 8px; font-size: 12px;" onchange="onGlobalPricingParamChange()">
+                <label class="form-label">人工打包(元)：</label>
+                <input type="number" class="form-input" id="calcLaborFee" value="0.25" step="0.05" style="padding: 4px 6px; font-size: 11.5px;" onchange="onGlobalPricingParamChange()">
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" style="font-size: 11px;">预期退款率 (%)：</label>
-                <input type="number" class="form-input" id="calcRefundRate" value="15" step="1" style="padding: 4px 8px; font-size: 12px;" onchange="onGlobalPricingParamChange()">
+                <label class="form-label">预期退款率(%)：</label>
+                <input type="number" class="form-input" id="calcRefundRate" value="15" step="1" style="padding: 4px 6px; font-size: 11.5px;" onchange="onGlobalPricingParamChange()">
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" style="font-size: 11px;">运费险损耗 (元)：</label>
-                <input type="number" class="form-input" id="calcInsuranceFee" value="0.00" step="0.1" style="padding: 4px 8px; font-size: 12px;" onchange="onGlobalPricingParamChange()">
+                <label class="form-label">运费险损耗(元)：</label>
+                <input type="number" class="form-input" id="calcInsuranceFee" value="0.00" step="0.1" style="padding: 4px 6px; font-size: 11.5px;" onchange="onGlobalPricingParamChange()">
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" style="font-size: 11px;">平台扣点 (%)：</label>
-                <input type="number" class="form-input" id="calcCommissionRate" value="0.6" step="0.1" style="padding: 4px 8px; font-size: 12px;" onchange="onGlobalPricingParamChange()">
+                <label class="form-label">平台扣点(%)：</label>
+                <input type="number" class="form-input" id="calcCommissionRate" value="0.6" step="0.1" style="padding: 4px 6px; font-size: 11.5px;" onchange="onGlobalPricingParamChange()">
               </div>
             </div>
 
             <!-- 全局ROAS目标设定 -->
-            <div class="form-group" style="margin-top: 10px; margin-bottom: 0;">
-              <label class="form-label" style="font-size: 11px;">实际全站设定 ROAS (选填)：</label>
-              <input type="number" class="form-input" id="calcTargetRoas" placeholder="不填则按各SKU保本ROI" step="0.1" style="padding: 4px 8px; font-size: 12px;" onchange="onGlobalPricingParamChange()">
+            <div class="form-group" style="margin-top: 8px; margin-bottom: 0;">
+              <label class="form-label">实际全站设定 ROAS (选填)：</label>
+              <input type="number" class="form-input" id="calcTargetRoas" placeholder="不填按保本ROI" step="0.1" style="padding: 4px 8px; font-size: 11.5px;" onchange="onGlobalPricingParamChange()">
             </div>
           </div>
 
           <!-- 2. 单品快捷测算器 (集成在左栏) -->
-          <div class="card" style="border-color: #38bdf8; padding: 16px;">
-            <div class="card-header" style="margin-bottom: 10px; padding-bottom: 8px;">
-              <div class="card-title" style="font-size: 13px;">
-                <div class="card-title-icon" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8;">⚡</div>
+          <div class="card" style="border-color: #38bdf8; padding: 14px;">
+            <div class="card-header" style="margin-bottom: 8px; padding-bottom: 6px;">
+              <div class="card-title" style="font-size: 12.5px;">
+                <div class="card-title-icon" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; width:22px; height:22px; font-size:12px;">⚡</div>
                 <span>单品快捷算价</span>
               </div>
               <button class="btn btn-outline" style="padding: 2px 6px; font-size: 10px;" onclick="loadPresetPricing('micro')">示例</button>
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
               <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" style="font-size: 11px;">SKU 规格名称：</label>
-                <input type="text" class="form-input" id="singleSkuName" value="一把装 (精装版)" style="padding: 4px 8px; font-size: 12px;">
+                <label class="form-label">SKU 规格名称：</label>
+                <input type="text" class="form-input" id="singleSkuName" value="一把装 (精装版)" style="padding: 4px 6px; font-size: 11.5px;">
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label" style="font-size: 11px;">包含件数：</label>
-                  <input type="number" class="form-input" id="singleSkuQty" value="1" min="1" style="padding: 4px 8px; font-size: 12px;">
+                  <label class="form-label">包含件数：</label>
+                  <input type="number" class="form-input" id="singleSkuQty" value="1" min="1" style="padding: 4px 6px; font-size: 11.5px;">
                 </div>
                 <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label" style="font-size: 11px;">单件成本 (元)：</label>
-                  <input type="number" class="form-input" id="singleUnitCost" value="0.94" step="0.01" style="padding: 4px 8px; font-size: 12px;">
-                </div>
-              </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label" style="font-size: 11px;">拼单售价 (元)：</label>
-                  <input type="number" class="form-input" id="singleSellingPrice" value="13.90" step="0.1" style="padding: 4px 8px; font-size: 12px;">
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label" style="font-size: 11px;">立减券 (元)：</label>
-                  <input type="number" class="form-input" id="singleCoupon" value="2.00" step="0.5" style="padding: 4px 8px; font-size: 12px;">
+                  <label class="form-label">单件成本(元)：</label>
+                  <input type="number" class="form-input" id="singleUnitCost" value="0.94" step="0.01" style="padding: 4px 6px; font-size: 11.5px;">
                 </div>
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label" style="font-size: 11px;">限时折扣率：</label>
-                  <input type="number" class="form-input" id="singleDiscountRate" value="0.70" step="0.05" min="0.1" max="1.0" style="padding: 4px 8px; font-size: 12px;">
+                  <label class="form-label">拼单售价(元)：</label>
+                  <input type="number" class="form-input" id="singleSellingPrice" value="13.90" step="0.1" style="padding: 4px 6px; font-size: 11.5px;">
                 </div>
                 <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label" style="font-size: 11px;">实设ROAS：</label>
-                  <input type="number" class="form-input" id="singleActualRoas" placeholder="默认保本" step="0.1" style="padding: 4px 8px; font-size: 12px;">
+                  <label class="form-label">立减券(元)：</label>
+                  <input type="number" class="form-input" id="singleCoupon" value="2.00" step="0.5" style="padding: 4px 6px; font-size: 11.5px;">
+                </div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label">限时折扣率：</label>
+                  <input type="number" class="form-input" id="singleDiscountRate" value="0.70" step="0.05" min="0.1" max="1.0" style="padding: 4px 6px; font-size: 11.5px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label">实设ROAS：</label>
+                  <input type="number" class="form-input" id="singleActualRoas" placeholder="默认保本" step="0.1" style="padding: 4px 6px; font-size: 11.5px;">
                 </div>
               </div>
 
-              <button class="btn btn-primary" style="padding: 7px; justify-content: center; font-size: 12px; margin-top: 4px;" onclick="runSinglePricingCalc()">
+              <button class="btn btn-primary" style="padding: 6px; justify-content: center; font-size: 11.5px; margin-top: 2px;" onclick="runSinglePricingCalc()">
                 🧮 测算单品
               </button>
             </div>
