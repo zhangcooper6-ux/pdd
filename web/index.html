@@ -769,6 +769,8 @@
                 <input type="text" class="form-input" id="aiModelIdInput" placeholder="模型ID (如 gemini-3.8-flash-high)" value="gemini-3.8-flash-high" oninput="saveAiConfig()" style="padding: 3px 8px; font-size: 11px; width: 160px;">
                 <!-- API Key -->
                 <input type="password" class="form-input" id="deepseekApiKey" placeholder="API Key (默认 123456 / sk-...)" oninput="saveAiConfig()" style="padding: 3px 8px; font-size: 11px; width: 145px;">
+                <!-- 测试连通性按钮 -->
+                <button class="btn btn-outline" id="btnTestAiConnection" onclick="testAiModelConnection()" style="padding: 3px 10px; font-size: 11px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" title="发送测试请求验证反代/API是否连通">⚡ 测试连通</button>
                 <span id="aiKeySavedToast" style="font-size: 10px; color: #34d399; display: none;">✅ 配置已保存</span>
               </div>
             </div>
@@ -2879,13 +2881,21 @@
           `;
         });
 
+        const isOnlineAi = dsTitle.status === 'success' || dsTitle.provider;
+        const providerTag = dsTitle.provider || (dsTitle.model && dsTitle.model.includes('gemini') ? 'EasyCLIProxy' : 'DeepSeek');
+        const badgeColor = isOnlineAi ? '#38bdf8' : '#94a3b8';
+        const badgeBg = isOnlineAi ? 'rgba(56, 189, 248, 0.2)' : 'rgba(148, 163, 184, 0.2)';
+
         dsCard.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <div style="display:flex; align-items:center; gap:6px;">
-              <span style="font-size:14px;">🧠</span>
-              <span style="font-weight:bold; color:#38bdf8; font-size:13px;">DeepSeek 满分标题SEO精修与诊断</span>
-              <span style="background:rgba(56, 189, 248, 0.2); color:#38bdf8; font-size:10px; padding:1px 6px; border-radius:10px;">${dsTitle.model || 'deepseek-chat'}</span>
+              <span style="font-size:14px;">${isOnlineAi ? '⚡' : '🧠'}</span>
+              <span style="font-weight:bold; color:#38bdf8; font-size:13px;">AI 满分标题SEO精修与诊断</span>
+              <span style="background:${badgeBg}; color:${badgeColor}; font-size:10px; padding:1px 6px; border-radius:10px; font-weight:600;">
+                ${isOnlineAi ? '🟢 在线调用成功: ' + (dsTitle.model || 'gemini-3.8-flash-high') : '⚪ 离线电商专家规则'}
+              </span>
             </div>
+            <span style="font-size:10px; color:#94a3b8;">通道: ${providerTag}</span>
           </div>
           <div style="background:rgba(0,0,0,0.25); padding:8px 10px; border-radius:6px; font-size:11.5px; color:#cbd5e1; margin-bottom:8px; line-height:1.5;">
             <div style="color:#fbbf24; margin-bottom:2px;">🔍 <strong>诊断建议</strong>：${diag.diagnosis_advice || '已剔除行业废词与截断，吃满 28~30 字搜索权重。'}</div>
@@ -3314,6 +3324,68 @@
         keyInput.placeholder = 'API Key (如有)';
       }
       saveAiConfig();
+    }
+
+    async function testAiModelConnection() {
+      const btn = document.getElementById('btnTestAiConnection');
+      const baseUrlInput = document.getElementById('aiBaseUrlInput');
+      const modelIdInput = document.getElementById('aiModelIdInput');
+      const keyInput = document.getElementById('deepseekApiKey');
+
+      const baseUrl = baseUrlInput ? baseUrlInput.value.trim() : 'http://127.0.0.1:8317/v1';
+      const modelName = modelIdInput ? modelIdInput.value.trim() : 'gemini-3.8-flash-high';
+      const apiKey = keyInput ? keyInput.value.trim() : '';
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ 正在测通...';
+      }
+
+      try {
+        const res = await fetch('/api/ai/test-connection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            base_url: baseUrl,
+            model_name: modelName,
+            api_key: apiKey || undefined
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`✅ 连通成功！模型: ${modelName} | 响应延迟: ${data.latency_ms}ms`);
+          if (btn) {
+            btn.style.borderColor = '#34d399';
+            btn.style.color = '#34d399';
+            btn.innerHTML = `✅ 连通 (${data.latency_ms}ms)`;
+            setTimeout(() => {
+              btn.disabled = false;
+              btn.style.color = '#38bdf8';
+              btn.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+              btn.innerHTML = '⚡ 测试连通';
+            }, 3000);
+          }
+        } else {
+          showToast(`❌ 连通失败: ${data.error || '请求超时/反代未启动'}`, 4000);
+          if (btn) {
+            btn.style.borderColor = '#f87171';
+            btn.style.color = '#f87171';
+            btn.innerHTML = '❌ 连接失败';
+            setTimeout(() => {
+              btn.disabled = false;
+              btn.style.color = '#38bdf8';
+              btn.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+              btn.innerHTML = '⚡ 测试连通';
+            }, 3000);
+          }
+        }
+      } catch (err) {
+        showToast(`❌ 网络异常: ${err.message}`, 4000);
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '⚡ 测试连通';
+        }
+      }
     }
 
     function toggleAiModelSwitch() {

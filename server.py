@@ -218,6 +218,45 @@ class TitleOptimizeRequest(BaseModel):
     deepseek_model: Optional[str] = "gemini-3.8-flash-high"
     base_url: Optional[str] = None
 
+class TestModelRequest(BaseModel):
+    base_url: Optional[str] = None
+    model_name: Optional[str] = "gemini-3.8-flash-high"
+    api_key: Optional[str] = None
+
+@app.post("/api/ai/test-connection")
+async def test_ai_connection(req: TestModelRequest):
+    """
+    快速测试 AI 模型与反代接口连通性
+    """
+    import time
+    start_t = time.time()
+    try:
+        call_res = PddProductAnalyzer.call_ai_chat_completions(
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": "Hello, please reply with 'pong' and nothing else."}
+            ],
+            api_key=req.api_key,
+            model_name=req.model_name or "gemini-3.8-flash-high",
+            base_url=req.base_url,
+            temperature=0.1
+        )
+        elapsed_ms = int((time.time() - start_t) * 1000)
+        return {
+            "success": True,
+            "latency_ms": elapsed_ms,
+            "model": req.model_name,
+            "reply": call_res.get("content", "").strip(),
+            "endpoint": call_res.get("endpoint", "")
+        }
+    except Exception as e:
+        elapsed_ms = int((time.time() - start_t) * 1000)
+        return {
+            "success": False,
+            "latency_ms": elapsed_ms,
+            "error": str(e)
+        }
+
 @app.post("/api/pdd/optimize-title")
 async def optimize_pdd_title(req: TitleOptimizeRequest):
     """
