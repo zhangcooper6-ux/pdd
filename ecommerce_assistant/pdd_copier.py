@@ -219,11 +219,12 @@ class PddProductAnalyzer:
         labor_fee: float = 0.25,
         refund_rate: float = 0.15,
         insurance_fee: float = 0.0,
-        platform_commission_rate: float = 0.006
+        platform_commission_rate: float = 0.006,
+        raw_title: str = ""
     ) -> Dict[str, Any]:
         """
         黄金SKU矩阵设计 (结合通用快递包材、打包人工、退率损耗与平台扣点进行精准定价):
-        严格遵循【黄金 4 阶梯 SKU 矩阵一级底层算法】:
+        严格遵循【黄金 4 阶梯 SKU 矩阵一级底层算法】并结合当前真实品类全动态生成:
         1. 引流卡位款 (1件装): 8.9元基准引流卡位，预留全站推广 1.7 保本 ROI 与 4.5 倍率安全上限
         2. 买一送一高溢价款 (2件装): 2.36 倍率引流价倒算 (21.0元)，拉高广告毛利
         3. 活动主力款 (2件装): 享 1 份包裹履约边际红利 (13.9元)，承接 80% 主流 CVR
@@ -233,6 +234,11 @@ class PddProductAnalyzer:
         deduct_factor = 1.0 - refund_rate - platform_commission_rate
         if deduct_factor <= 0.1:
             deduct_factor = 0.844
+
+        # 结合品类语义识别核心词与对象
+        core_kw, _ = UniversalTitleEngine.extract_core_and_modifiers(raw_title)
+        is_pet = any(w in raw_title for w in ["宠物", "狗粮", "猫粮", "猫咪", "狗狗"])
+        is_clothing = any(w in raw_title for w in ["连衣裙", "裙", "衣", "裤", "鞋"])
 
         # 1. 算出引流卡位款基准 (1件成本 + 包裹硬成本 + 广告防守溢价，保底 8.9 元)
         attr_raw = ((base_cost * 1.0 + fixed_pack_cost) + 0.8) / deduct_factor
@@ -263,12 +269,26 @@ class PddProductAnalyzer:
         c2, m2, mr2 = calc_sku_details(2, sku2_price)
         c3, m3, mr3 = calc_sku_details(3, sku3_price)
 
+        # 针对当前类目动态定制 SKU 名称
+        if is_pet:
+            sku1_name = f"【尝鲜体验】{core_kw}(1件装)·限购1件"
+            sku2_name = f"🔥店长力荐：拍1发2【2把装+配趣味逗猫球】加厚带夹-N"
+            sku3_name = f"🏆【多宠家庭囤货4件套】母婴级加厚防断+配解闷玩具球大礼包"
+        elif is_clothing:
+            sku1_name = f"【尝鲜专享】{core_kw}·初体验款"
+            sku2_name = f"👑【店长力荐/买1送1】{core_kw}实发2件套(80%买家选择)"
+            sku3_name = f"🏆【全套尊享装】{core_kw}+配精美饰品礼盒"
+        else:
+            sku1_name = f"【尝鲜体验】{core_kw}(1件装)·限购1件"
+            sku2_name = f"👑镇店之宝：拍1发2【买1送1实发2件】加厚多用途+配无痕挂钩"
+            sku3_name = f"🏆【全家福大容量4件套】食品级加厚耐用+配挂钩收纳全套"
+
         skus = [
             {
                 "sku_id": "SKU_01_ATTR",
                 "level": "引流位",
                 "role": "引流位 (吸睛CTR)",
-                "sku_name": "尝鲜试用款【体验装1件】",
+                "sku_name": sku1_name,
                 "spec_tag": "尝鲜体验 / 试用1件装",
                 "spec_guide": "单品小规格，主图左上角打'试用尝鲜'标，点击率拉满",
                 "cost": round(base_cost * 1.0, 2),
@@ -284,7 +304,7 @@ class PddProductAnalyzer:
                 "sku_id": "SKU_02_HERO",
                 "level": "主推爆款",
                 "role": "主推款 (承接80%订单拉高CTV)",
-                "sku_name": "【店长推荐/买一送一】实发2件装(80%人拍)",
+                "sku_name": sku2_name,
                 "spec_tag": "🔥爆款热卖 / 买1送1 实发2件",
                 "spec_guide": "带'实发2件'大字视觉冲击，赠送运费险，转化率最高",
                 "cost": round(base_cost * 2.0, 2),
@@ -300,8 +320,8 @@ class PddProductAnalyzer:
                 "sku_id": "SKU_03_PROFIT",
                 "level": "高客单位",
                 "role": "利润位 (高客单/撑起全站出价上限)",
-                "sku_name": "【量贩囤货装/买多更划算】实发3件装",
-                "spec_tag": "整箱囤货 / 超值3件装",
+                "sku_name": sku3_name,
+                "spec_tag": "整箱囤货 / 超值大包装",
                 "spec_guide": "堆头感强，专攻多买买家，抬升客单价与店铺利润",
                 "cost": round(base_cost * 3.0, 2),
                 "price": sku3_price,

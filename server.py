@@ -306,7 +306,8 @@ async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
             labor_fee=req.labor_fee,
             refund_rate=req.refund_rate,
             insurance_fee=req.insurance_fee,
-            platform_commission_rate=req.platform_commission_rate
+            platform_commission_rate=req.platform_commission_rate,
+            raw_title=raw_info.get("raw_title", "")
         )
 
         # 4.5 精算对标卡位截流与投产压制策略
