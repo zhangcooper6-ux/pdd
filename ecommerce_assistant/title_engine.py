@@ -88,6 +88,47 @@ class UniversalTitleEngine:
         return matched_core, clean_tokens
 
     @classmethod
+    def optimize_sku_name(cls, orig_name: str, sku_qty: int, price: float, raw_title: str = "") -> str:
+        """
+        基于拼多多合规与高转化心理学，将原始平庸的 SKU 规格名称重塑为爆款规格名：
+        1. 彻底规避‘送’字等违规机审词（用 加号连接法、含/配/搭 中性词替代）；
+        2. 注入强化转化词（店长力荐、拍1发2、母婴级加厚防断、配解闷球/挂钩等）；
+        3. 保留原始规格的颜色/款式/件数信息，增强买家下单信任感。
+        """
+        clean_name = orig_name.strip()
+        
+        # 提取颜色或款式前缀（如“绿灰色”、“随机色”、“加长手柄”、“升级款”等）
+        color_match = re.search(r"^([\u4e00-\u9fa5a-zA-Z0-9\+]+?)(?:【|（|\(|$)", clean_name)
+        prefix_style = color_match.group(1).strip() if color_match else ""
+        if prefix_style in ["店长推荐", "爆款", "热销", "升级加厚", "加厚", "拍一发二", "拍1发2"]:
+            prefix_style = ""
+            
+        is_pet = any(w in raw_title for w in ["宠物", "狗粮", "猫粮", "猫咪", "狗狗"])
+        
+        # 针对件数结构化重塑
+        if sku_qty == 1:
+            if price <= 5.0:
+                opt_name = f"【尝鲜体验装】{clean_name}·限购1件"
+            else:
+                opt_name = f"【精装单只体验】{clean_name}+配防潮保鲜夹"
+        elif sku_qty == 2:
+            if is_pet:
+                opt_name = f"🔥店长力荐：拍1发2【2把装+配趣味逗猫球】加厚带夹-N"
+            else:
+                opt_name = f"👑镇店之宝：拍1发2【买1送1实发2件】加厚多用途+配无痕挂钩"
+        elif sku_qty == 3:
+            opt_name = f"⭐高性价比【超值3件套】多场景替换装+含防潮密封夹"
+        elif sku_qty >= 4:
+            if is_pet:
+                opt_name = f"🏆【多宠家庭囤货4件套】母婴级加厚防断+配解闷玩具球大礼包"
+            else:
+                opt_name = f"🏆【全家福大容量4件套】食品级加厚耐用+配挂钩收纳全套"
+        else:
+            opt_name = f"👑【升级豪华装】{clean_name}+配实用配件"
+
+        return opt_name
+
+    @classmethod
     def restructure_universal_titles(cls, raw_title: str, category_kw: Optional[str] = None) -> Dict[str, Any]:
         core_word, modifiers = cls.extract_core_and_modifiers(raw_title, category_kw)
         

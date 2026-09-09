@@ -279,7 +279,8 @@ async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
             platform_commission_rate=req.platform_commission_rate,
             strategy_mode=req.strategy_mode,
             golden_sku_matrix=sku_matrix,
-            enable_intercept_pricing=req.enable_intercept_pricing
+            enable_intercept_pricing=req.enable_intercept_pricing,
+            raw_title=raw_info.get("raw_title", "")
         )
         sku_matrix["interception_strategy"] = interception
         

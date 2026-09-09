@@ -374,7 +374,8 @@ class PddProductAnalyzer:
         platform_commission_rate: float = 0.006,
         strategy_mode: str = "micro_pay",
         golden_sku_matrix: Optional[Dict[str, Any]] = None,
-        enable_intercept_pricing: bool = True
+        enable_intercept_pricing: bool = True,
+        raw_title: str = ""
     ) -> Dict[str, Any]:
         """
         根据对标链接全量真实 SKU 价格与规格结构，精算“卡位截流”与“降维打击”最优策略：
@@ -457,8 +458,17 @@ class PddProductAnalyzer:
             my_margin = round(my_price - goods_cost - fixed_pack - refund_loss - commission_fee, 2)
             my_roi = round(my_price / my_margin, 2) if my_margin > 0 else 99.0
 
+            # 智能重塑高转化合规规格名称 (规避送字机审、结合高转化心理学)
+            optimized_sku_name = UniversalTitleEngine.optimize_sku_name(
+                orig_name=orig_name,
+                sku_qty=sku_qty,
+                price=my_price,
+                raw_title=raw_title if 'raw_title' in locals() else ""
+            )
+
             sku_comparison_list.append({
                 "orig_name": orig_name,
+                "optimized_name": optimized_sku_name,
                 "orig_price": orig_price,
                 "sku_qty": sku_qty,
                 "goods_cost": goods_cost,
