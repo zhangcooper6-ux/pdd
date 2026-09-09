@@ -96,11 +96,21 @@ class PddProductAnalyzer:
 
         raw_title = custom_title if custom_title else (extracted_title_from_text if extracted_title_from_text else "多功能舀米勺挖面粉勺家用长柄带夹子舀面勺量勺创意量勺米粉勺子")
 
-        # 6. 确定核心品类关键词 (Category keyword)
-        category_kw = search_term or "舀米勺"
+        # 6. 确定核心品类关键词与长尾场景词 (Category keyword & Semantic terms)
+        # 优先从传入的真实标题中提取高价值核心词（如 "狗粮猫粮勺"、"宠物勺"、"五谷杂粮勺" 等），杜绝退化为静态默认词
+        derived_core_kw = None
+        if raw_title:
+            # 常见高频品类词匹配
+            kw_candidates = re.findall(r"(?:宠物勺|狗粮勺|猫粮勺|铲米勺|面粉勺|舀米勺|量米勺|杂粮勺|封口夹勺|多功能勺|带夹勺|勺子|量勺|米勺|铲子|收纳箱|沥水架|置物架|清洁刷)", raw_title)
+            if kw_candidates:
+                # 组合前两个精准词，例如 "宠物狗粮勺" 或 "多功能铲米勺"
+                unique_kws = list(dict.fromkeys(kw_candidates))
+                derived_core_kw = "".join(unique_kws[:2])
+
+        category_kw = derived_core_kw or search_term or "多功能勺"
         category_kw_clean = re.sub(r"[^\u4e00-\u9fa5a-zA-Z0-9]", "", category_kw)
         if not category_kw_clean or len(category_kw_clean) < 2:
-            category_kw_clean = "舀米勺"
+            category_kw_clean = "多功能勺"
 
         # 7. 规格明细与价格构建 (若传入真实 custom_skus 校验使用，否则载入真实 8 组对标数据)
         if custom_skus and len(custom_skus) > 0:
@@ -198,26 +208,46 @@ class PddProductAnalyzer:
         for pw in PROHIBITED_WORDS:
             cleaned_core = cleaned_core.replace(pw, "")
 
-        # 智能提取输入标题中的修饰特征
+        # 智能提取输入标题中的修饰特征与真实场景
         raw_clean = re.sub(r"[^\u4e00-\u9fa5a-zA-Z0-9]", "", raw_title or "")
         
-        # 1. 核心大词 (Core Keyword)
-        core_word = cleaned_core or "收纳箱"
+        # 细分场景挖掘
+        has_pet = any(w in raw_clean for w in ["狗粮", "猫粮", "宠物"])
+        has_kitchen = any(w in raw_clean for w in ["米", "面粉", "杂粮", "五谷"])
+        has_clip = any(w in raw_clean for w in ["夹子", "封口", "带夹"])
+        has_handle = any(w in raw_clean for w in ["长柄", "手柄", "个性手柄"])
 
-        # 2. 三套严格遵循 [核心词] + [高频长尾修饰词] + [材质/场景] + [防比价差异词] 的标题方案
-        # 方案 A: 综合高权重防比价爆款 (大词居中/防比价差异词前置)
-        # [防比价差异词:【升级带夹/防漏封口】] + [核心词:舀米勺] + [长尾修饰词:家用厨房多功能大容量挖面粉量米] + [材质/场景:食品级加厚]
-        t1_formula = f"【加厚防尘】{core_word}家用厨房大号多功能收纳挖面粉量勺食品级加厚多用途"
+        if has_pet:
+            scene_mod1 = "宠物狗粮猫粮通用"
+            scene_mod2 = "家用猫咪狗狗喂食"
+            scene_mod3 = "加厚宠物粮食防潮"
+        elif has_kitchen:
+            scene_mod1 = "家用厨房大米五谷"
+            scene_mod2 = "大容量面粉杂粮"
+            scene_mod3 = "厨房多功能量米挖面"
+        else:
+            scene_mod1 = "家用厨房多功能"
+            scene_mod2 = "大容量量取工具"
+            scene_mod3 = "加厚耐用多用途"
+
+        clip_tag = "自带封口夹" if has_clip else "大容量量取"
+        
+        # 1. 核心大词 (Core Keyword)
+        core_word = cleaned_core or ("宠物狗粮勺" if has_pet else "多功能量勺")
+
+        # 2. 三套严格遵循 [核心词] + [高频长尾修饰词] + [材质/场景] + [防比价差异词] 的动态差异化标题方案
+        # 方案 A: 综合高权重防比价爆款 (防比价差异词前置 + 核心词 + 真实场景 + 材质)
+        t1_formula = f"【加厚防潮】{core_word}{scene_mod1}{clip_tag}食品级材质加厚耐用"
         if len(t1_formula) > 30:
             t1_formula = t1_formula[:30]
 
-        # 方案 B: 极致性价比自然流款 (长尾修饰 + 核心词 + 材质场景 + 防比价赠品词)
-        t2_formula = f"家用大号{core_word}多功能厨房挖面量米工具加厚食品级PP材质送挂钩"
+        # 方案 B: 极致性价比自然流款 (真实场景 + 核心词 + 功能 + 微赠品差异词)
+        t2_formula = f"{scene_mod2}{core_word}{clip_tag}省力手柄食品级PP送挂钩"
         if len(t2_formula) > 30:
             t2_formula = t2_formula[:30]
 
-        # 方案 C: 品质升级高溢价款 (核心词 + 尊享长尾 + 场景材质 + 质检防撞词)
-        t3_formula = f"加厚耐用{core_word}厨房家用五谷面粉大容量量杯母婴级无异味环保品质"
+        # 方案 C: 品质升级高溢价款 (加厚防断 + 核心词 + 真实场景 + 质检防撞词)
+        t3_formula = f"加厚防断{core_word}{scene_mod3}{clip_tag}母婴级环保无异味"
         if len(t3_formula) > 30:
             t3_formula = t3_formula[:30]
 
@@ -227,9 +257,9 @@ class PddProductAnalyzer:
                 "title": t1_formula,
                 "formula_breakdown": {
                     "核心词": core_word,
-                    "长尾修饰词": "家用厨房大号多功能",
-                    "材质场景": "食品级加厚多用途",
-                    "防比价差异词": "【加厚防尘/升级款】"
+                    "长尾修饰词": scene_mod1,
+                    "材质场景": f"{clip_tag}食品级加厚",
+                    "防比价差异词": "【加厚防潮/升级款】"
                 },
                 "char_count": len(t1_formula),
                 "strategy": "严格按 [防比价差异词] + [核心词] + [长尾修饰词] + [材质/场景] 组合，彻底规避算法同款压价。"
@@ -239,24 +269,24 @@ class PddProductAnalyzer:
                 "title": t2_formula,
                 "formula_breakdown": {
                     "核心词": core_word,
-                    "长尾修饰词": "多功能厨房挖面量米工具",
-                    "材质场景": "加厚食品级PP材质",
+                    "长尾修饰词": scene_mod2,
+                    "材质场景": "省力手柄食品级PP",
                     "防比价差异词": "送挂钩/多件套"
                 },
                 "char_count": len(t2_formula),
-                "strategy": "前置家用大号刚需搜索词，后置微赠品差异词，兼顾 9.9 包邮与高点击 CTR。"
+                "strategy": "前置真实刚需搜索场景词，后置微赠品差异词，兼顾 9.9 包邮与高点击 CTR。"
             },
             {
                 "scheme": "👑 品质升级高溢价款",
                 "title": t3_formula,
                 "formula_breakdown": {
                     "核心词": core_word,
-                    "长尾修饰词": "厨房家用五谷面粉大容量量杯",
-                    "材质场景": "母婴级无异味加厚耐用",
+                    "长尾修饰词": scene_mod3,
+                    "材质场景": f"{clip_tag}母婴级无异味",
                     "防比价差异词": "环保品质/质检保障"
                 },
                 "char_count": len(t3_formula),
-                "strategy": "主打母婴级、环保与无异味高端属性，为 29.9+ 高客单价提供充足溢价支撑。"
+                "strategy": "主打加厚防断与环保安全高端属性，为 29.9+ 高客单价提供充足溢价支撑。"
             }
         ]
 
