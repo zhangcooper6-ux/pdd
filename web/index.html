@@ -650,13 +650,13 @@
           <div class="form-group">
             <label class="form-label">对标商品链接 / 口令 / 商品ID：</label>
             <input type="text" class="form-input" id="pddBenchmarkInput" 
-                   value="https://mobile.yangkeduo.com/goods.php?goods_id=109827364512" 
-                   placeholder="输入拼多多商品链接、分享口令或 ID">
+                   value="" 
+                   placeholder="粘贴拼多多商品链接、分享口令或 ID">
           </div>
 
           <div class="form-group">
             <label class="form-label">单件供货底价 (元)：</label>
-            <input type="number" class="form-input" id="pddCostInput" value="4.50" step="0.1" onchange="syncPricingInputs('pddCostInput', 'calcCostInput')">
+            <input type="number" class="form-input" id="pddCostInput" value="" placeholder="输入拿货成本(如 0.85)" step="0.01" onchange="syncPricingInputs('pddCostInput', 'calcCostInput')">
           </div>
 
           <div class="form-group">
@@ -2588,8 +2588,20 @@
     async function runPddBenchmarkAnalysis(btnElem) {
       const urlInput = document.getElementById('pddBenchmarkInput');
       let urlText = urlInput ? urlInput.value.trim() : '';
-      const baseCostVal = parseFloat(document.getElementById('pddCostInput').value);
-      const baseCost = !isNaN(baseCostVal) ? baseCostVal : 4.5;
+      if (!urlText) {
+        showToast("⚠️ 请先输入或粘贴对标商品链接、分享口令或商品ID！", 3500);
+        if (urlInput) urlInput.focus();
+        return;
+      }
+
+      const costInput = document.getElementById('pddCostInput');
+      const baseCostVal = parseFloat(costInput ? costInput.value : '');
+      if (isNaN(baseCostVal) || baseCostVal <= 0) {
+        showToast("⚠️ 请先输入您真实的【单件供货底价 (元)】！", 3500);
+        if (costInput) costInput.focus();
+        return;
+      }
+      const baseCost = baseCostVal;
       
       // 同步把 Tab 2 下单品快捷算价器里的单件成本也赋值为 baseCost
       const singleUnitCostEl = document.getElementById('singleUnitCost');
