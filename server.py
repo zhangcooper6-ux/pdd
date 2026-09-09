@@ -211,6 +211,27 @@ class BenchmarkAnalyzeRequest(BaseModel):
     platform_commission_rate: float = 0.006
     enable_intercept_pricing: bool = True
 
+class TitleOptimizeRequest(BaseModel):
+    title: str
+    api_key: Optional[str] = None
+    deepseek_model: Optional[str] = "deepseek-chat"
+
+@app.post("/api/pdd/optimize-title")
+async def optimize_pdd_title(req: TitleOptimizeRequest):
+    """
+    调用 DeepSeek 大模型对输入标题进行全网 SEO、违规与废词诊断，并生成满分精修方案
+    """
+    try:
+        res = PddProductAnalyzer.call_deepseek_title_optimizer(
+            raw_title=req.title,
+            api_key=req.api_key,
+            model_name=req.deepseek_model or "deepseek-chat"
+        )
+        return {"success": True, "data": res}
+    except Exception as e:
+        import traceback
+        return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
+
 @app.post("/api/pdd/analyze-benchmark")
 async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
     """
@@ -270,10 +291,16 @@ async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
         
         # 7. 可选调用 DeepSeek (支持自定义模型选择: deepseek-chat / deepseek-reasoner)
         deepseek_res = None
+        deepseek_title_res = None
         if req.api_key:
             deepseek_res = PddProductAnalyzer.call_deepseek_refine(
                 f"请针对对标商品【{raw_info['raw_title']}】，结合微付费/强付费起爆SOP，生成一套更具杀伤力的高点击差异化卖点和评价引流方案。",
                 req.api_key,
+                model_name=req.deepseek_model or "deepseek-chat"
+            )
+            deepseek_title_res = PddProductAnalyzer.call_deepseek_title_optimizer(
+                raw_title=raw_info["raw_title"],
+                api_key=req.api_key,
                 model_name=req.deepseek_model or "deepseek-chat"
             )
 
@@ -289,7 +316,8 @@ async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
                 "activity_plan": sku_matrix["activity_plan"],
                 "visual_prompts": visuals,
                 "pdd_open_api_schema": mms_data,
-                "deepseek_refine": deepseek_res
+                "deepseek_refine": deepseek_res,
+                "deepseek_title_refine": deepseek_title_res
             }
         }
     except Exception as e:

@@ -110,15 +110,15 @@ class UniversalTitleEngine:
 
         # ==================== 方案 B：⚡ 性价比自然流跑量款 ====================
         # 公式：[前置刚需搜索词] + [核心大词] + [长尾修饰] + [微赠品防比价词]
-        t2 = f"{scene_part}{core_word}{feat_part}多用途高性价比送配件" if not is_clothing else f"{scene_part}{core_word}{feat_part}小个子显瘦舒适百搭"
+        t2 = f"{scene_part}{core_word}{feat_part}多用途高性价比配配件超值家用包邮" if not is_clothing else f"{scene_part}{core_word}{feat_part}小个子显瘦舒适百搭正品包邮"
         if len(t2) > 30: t2 = t2[:30]
-        elif len(t2) < 26: t2 = (t2 + "超值跑量包邮到家")[:30]
+        elif len(t2) < 26: t2 = (t2 + "耐用实惠")[:30]
 
         # ==================== 方案 C：👑 品质升级高溢价款 ====================
         # 公式：[品质前缀] + [核心大词] + [真实长尾特征] + [质检无忧防撞词]
         t3 = f"{diff_c}{core_word}{scene_part}{feat_part}母婴级环保无异味质检认证" if not is_clothing else f"{diff_c}{core_word}{scene_part}{feat_part}高级感不挑身材品质保证"
         if len(t3) > 30: t3 = t3[:30]
-        elif len(t3) < 26: t3 = (t3 + "高档质感假一赔十")[:30]
+        elif len(t3) < 26: t3 = (t3 + "高档质感品质优选")[:30]
 
         return {
             "core_word": core_word,

@@ -2832,9 +2832,55 @@
         });
       }
 
-      // 4. 标题方案 (渲染四段式防比价拆解)
+      // 4. 标题方案 (渲染四段式防比价拆解 + DeepSeek 满分精修方案)
       const titlesCont = document.getElementById('titlePlansContainer');
       titlesCont.innerHTML = '';
+      
+      // 如果 DeepSeek 标题精修返回了数据，先渲染置顶卡片
+      const dsTitle = data.deepseek_title_refine;
+      if (dsTitle && dsTitle.optimized_plans && dsTitle.optimized_plans.length > 0) {
+        const diag = dsTitle.diagnosis || {};
+        const dsCard = document.createElement('div');
+        dsCard.style.background = 'linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(56, 189, 248, 0.08))';
+        dsCard.style.border = '1px solid rgba(99, 102, 241, 0.4)';
+        dsCard.style.padding = '14px 16px';
+        dsCard.style.borderRadius = '10px';
+        dsCard.style.marginBottom = '12px';
+        
+        let plansHtml = '';
+        dsTitle.optimized_plans.forEach((p, idx) => {
+          plansHtml += `
+            <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(99, 102, 241, 0.25); padding: 10px 12px; border-radius: 8px; margin-top: 8px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <span style="font-weight:bold; color:#a5b4fc; font-size:12.5px;">${p.name}</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-size:11px; color:#38bdf8; font-weight:600;">${p.char_count || 28}字 (满权重)</span>
+                  <button class="btn btn-primary" style="font-size:10.5px; padding:2px 8px; border-radius:4px;" onclick="copyText('${(p.title || '').replace(/'/g, "\\'")}')">一键复制</button>
+                </div>
+              </div>
+              <div style="font-size:13px; font-weight:600; color:#f8fafc; word-break:break-all; line-height:1.5;">${p.title}</div>
+              <div style="font-size:11px; color:#94a3b8; margin-top:4px;">✨ 亮点: ${p.highlight || '满权重精准搜推词'}</div>
+            </div>
+          `;
+        });
+
+        dsCard.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:14px;">🧠</span>
+              <span style="font-weight:bold; color:#38bdf8; font-size:13px;">DeepSeek 满分标题SEO精修与诊断</span>
+              <span style="background:rgba(56, 189, 248, 0.2); color:#38bdf8; font-size:10px; padding:1px 6px; border-radius:10px;">${dsTitle.model || 'deepseek-chat'}</span>
+            </div>
+          </div>
+          <div style="background:rgba(0,0,0,0.25); padding:8px 10px; border-radius:6px; font-size:11.5px; color:#cbd5e1; margin-bottom:8px; line-height:1.5;">
+            <div style="color:#fbbf24; margin-bottom:2px;">🔍 <strong>诊断建议</strong>：${diag.diagnosis_advice || '已剔除行业废词与截断，吃满 28~30 字搜索权重。'}</div>
+            ${diag.waste_words_detected && diag.waste_words_detected.length > 0 ? `<div style="color:#f87171;">⚠️ 识别出的低效废词：${diag.waste_words_detected.join('、')} (已自动剔除)</div>` : ''}
+          </div>
+          ${plansHtml}
+        `;
+        titlesCont.appendChild(dsCard);
+      }
+
       (data.title_plans || []).forEach(tp => {
         const div = document.createElement('div');
         div.style.background = '#090d16';
