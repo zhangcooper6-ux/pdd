@@ -200,7 +200,8 @@ class BenchmarkAnalyzeRequest(BaseModel):
     base_cost: float = 0.94
     strategy_mode: str = "micro_pay" # free_traffic, micro_pay, strong_pay
     api_key: Optional[str] = None
-    deepseek_model: Optional[str] = "deepseek-chat" # deepseek-chat, deepseek-v4-flash, deepseek-reasoner
+    deepseek_model: Optional[str] = "gemini-3.8-flash-high" # deepseek-chat, gemini-3.8-flash-high, etc.
+    base_url: Optional[str] = None # http://127.0.0.1:8317/v1 or custom openai proxy
     custom_title: Optional[str] = None
     custom_skus: Optional[List[Dict[str, Any]]] = None
     express_fee: float = 1.8
@@ -214,18 +215,20 @@ class BenchmarkAnalyzeRequest(BaseModel):
 class TitleOptimizeRequest(BaseModel):
     title: str
     api_key: Optional[str] = None
-    deepseek_model: Optional[str] = "deepseek-chat"
+    deepseek_model: Optional[str] = "gemini-3.8-flash-high"
+    base_url: Optional[str] = None
 
 @app.post("/api/pdd/optimize-title")
 async def optimize_pdd_title(req: TitleOptimizeRequest):
     """
-    调用 DeepSeek 大模型对输入标题进行全网 SEO、违规与废词诊断，并生成满分精修方案
+    调用 AI 大模型对输入标题进行全网 SEO、违规与废词诊断，并生成满分精修方案
     """
     try:
         res = PddProductAnalyzer.call_deepseek_title_optimizer(
             raw_title=req.title,
             api_key=req.api_key,
-            model_name=req.deepseek_model or "deepseek-chat"
+            model_name=req.deepseek_model or "gemini-3.8-flash-high",
+            base_url=req.base_url
         )
         return {"success": True, "data": res}
     except Exception as e:
@@ -290,19 +293,21 @@ async def analyze_pdd_benchmark(req: BenchmarkAnalyzeRequest):
         # 6. 生成拼多多合规上架MMS数据
         mms_data = PddProductAnalyzer.generate_pdd_import_schema(titles["title_plans"][0]["title"], sku_matrix["skus"])
         
-        # 7. 可选调用 DeepSeek (支持自定义模型选择: deepseek-chat / deepseek-reasoner)
+        # 7. 可选调用 AI 大模型 (支持 DeepSeek / EasyCLIProxy 反代等自定义模型)
         deepseek_res = None
         deepseek_title_res = None
-        if req.api_key:
+        if req.api_key or req.base_url:
             deepseek_res = PddProductAnalyzer.call_deepseek_refine(
                 f"请针对对标商品【{raw_info['raw_title']}】，结合微付费/强付费起爆SOP，生成一套更具杀伤力的高点击差异化卖点和评价引流方案。",
-                req.api_key,
-                model_name=req.deepseek_model or "deepseek-chat"
+                api_key=req.api_key,
+                model_name=req.deepseek_model or "gemini-3.8-flash-high",
+                base_url=req.base_url
             )
             deepseek_title_res = PddProductAnalyzer.call_deepseek_title_optimizer(
                 raw_title=raw_info["raw_title"],
                 api_key=req.api_key,
-                model_name=req.deepseek_model or "deepseek-chat"
+                model_name=req.deepseek_model or "gemini-3.8-flash-high",
+                base_url=req.base_url
             )
 
         return {

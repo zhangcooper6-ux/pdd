@@ -665,16 +665,70 @@ class PddProductAnalyzer:
         return goods_commit_data
 
     @staticmethod
-    def call_deepseek_title_optimizer(raw_title: str, api_key: Optional[str] = None, model_name: str = "deepseek-chat") -> Dict[str, Any]:
+    def call_ai_chat_completions(
+        messages: List[Dict[str, str]],
+        api_key: Optional[str] = None,
+        model_name: str = "deepseek-chat",
+        base_url: Optional[str] = None,
+        temperature: float = 0.7,
+        response_json: bool = False
+    ) -> Dict[str, Any]:
         """
-        调用 DeepSeek 进行电商标题满分深度诊断、违规校验与高权重精修重塑
+        通用 OpenAI 协议大模型调度适配器：
+        支持 DeepSeek 官方 API (https://api.deepseek.com)
+        及 EasyCLIProxy 等本地/远程 OpenAI 兼容反代 (如 http://127.0.0.1:8317/v1)
         """
-        if not api_key:
+        target_base = (base_url or "").strip().rstrip("/")
+        if not target_base:
+            endpoint_url = "https://api.deepseek.com/chat/completions"
+        elif target_base.endswith("/chat/completions"):
+            endpoint_url = target_base
+        elif target_base.endswith("/v1"):
+            endpoint_url = f"{target_base}/chat/completions"
+        else:
+            endpoint_url = f"{target_base}/v1/chat/completions"
+
+        auth_header = f"Bearer {api_key}" if api_key else "Bearer 123456"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": auth_header
+        }
+        
+        body: Dict[str, Any] = {
+            "model": model_name or "gemini-3.8-flash-high",
+            "messages": messages,
+            "temperature": temperature
+        }
+        if response_json:
+            # 部分模型支持 response_format
+            body["response_format"] = {"type": "json_object"}
+
+        req = urllib.request.Request(endpoint_url, data=json.dumps(body).encode('utf-8'), headers=headers)
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            result = json.loads(resp.read().decode('utf-8'))
+            return {
+                "success": True,
+                "content": result["choices"][0]["message"]["content"],
+                "model": model_name,
+                "endpoint": endpoint_url
+            }
+
+    @staticmethod
+    def call_deepseek_title_optimizer(
+        raw_title: str, 
+        api_key: Optional[str] = None, 
+        model_name: str = "deepseek-chat",
+        base_url: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        调用 LLM (DeepSeek 或 EasyCLIProxy) 进行电商标题满分深度诊断、违规校验与高权重精修重塑
+        """
+        if not api_key and not base_url:
             # 离线专家规则重构方案
             core_kw, modifiers = UniversalTitleEngine.extract_core_and_modifiers(raw_title)
             return {
                 "status": "offline_mode",
-                "message": "已启用内置电商专家诊断引擎（未填 API Key），如需大模型深度润色可填入 DeepSeek Key。",
+                "message": "已启用内置电商专家诊断引擎（未配置 API/反代），如需大模型深度润色可配置 EasyCLIProxy 或 DeepSeek。",
                 "diagnosis": {
                     "forbidden_words": "未检测到违反新广告法的严重极限词",
                     "waste_words_detected": [w for w in ["跑量", "配件", "超值", "正品", "特价"] if w in raw_title],
@@ -703,7 +757,7 @@ class PddProductAnalyzer:
                 ]
             }
 
-        selected_model = model_name if model_name else "deepseek-chat"
+        selected_model = model_name if model_name else "gemini-3.8-flash-high"
         prompt = f"""
 你是一名拥有10年拼多多与淘系爆款操盘经验的顶尖电商运营专家。
 请对以下商品原始标题进行深度诊断与高权重满分精修重塑：
@@ -751,74 +805,78 @@ class PddProductAnalyzer:
 }}
 """
         try:
-            url = "https://api.deepseek.com/chat/completions"
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}"
-            }
-            body = {
-                "model": selected_model,
-                "messages": [
+            call_res = PddProductAnalyzer.call_ai_chat_completions(
+                messages=[
                     {"role": "system", "content": "你是一名精通拼多多全站搜推算法与标题SEO的电商专家。请严格只返回要求的 JSON 格式。"},
                     {"role": "user", "content": prompt}
                 ],
-                "response_format": {"type": "json_object"},
-                "temperature": 0.3
-            }
-            req = urllib.request.Request(url, data=json.dumps(body).encode('utf-8'), headers=headers)
-            with urllib.request.urlopen(req, timeout=20) as resp:
-                result = json.loads(resp.read().decode('utf-8'))
-                content = result["choices"][0]["message"]["content"]
-                parsed_json = json.loads(content)
-                parsed_json["status"] = "success"
-                parsed_json["model"] = selected_model
-                return parsed_json
+                api_key=api_key,
+                model_name=selected_model,
+                base_url=base_url,
+                temperature=0.3,
+                response_json=False
+            )
+            content = call_res["content"].strip()
+            # 清除可能包裹的 markdown 标记
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.startswith("```"):
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
+
+            parsed_json = json.loads(content)
+            parsed_json["status"] = "success"
+            parsed_json["model"] = selected_model
+            parsed_json["provider"] = "EasyCLIProxy" if base_url else "DeepSeek"
+            return parsed_json
         except Exception as e:
             # 失败降级到离线规则
-            offline_res = PddProductAnalyzer.call_deepseek_title_optimizer(raw_title, api_key=None)
+            offline_res = PddProductAnalyzer.call_deepseek_title_optimizer(raw_title, api_key=None, base_url=None)
             offline_res["api_error"] = str(e)
-            offline_res["message"] = f"DeepSeek 在线调用失败 ({str(e)})，已自动无缝切换为内置电商专家高权重精修方案。"
+            offline_res["message"] = f"AI 在线调用失败 ({str(e)})，已自动无缝切换为内置电商专家高权重精修方案。"
             return offline_res
 
     @staticmethod
-    def call_deepseek_refine(prompt_content: str, api_key: Optional[str] = None, model_name: str = "deepseek-chat") -> Dict[str, Any]:
+    def call_deepseek_refine(
+        prompt_content: str, 
+        api_key: Optional[str] = None, 
+        model_name: str = "deepseek-chat",
+        base_url: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        调用 DeepSeek API 进行高阶文案、主图文案或起爆策略重构 (支持自定义模型: deepseek-chat, deepseek-reasoner 等)
+        调用 AI API 进行高阶文案、主图文案或起爆策略重构 (支持 DeepSeek 官方 / EasyCLIProxy 反代)
         """
-        if not api_key:
+        if not api_key and not base_url:
             return {
                 "used_mode": "offline_expert_rules",
-                "message": "未配置 DEEPSEEK_API_KEY，已自动切换为本地拼多多专家SOP重构引擎。",
+                "message": "未配置 API Key 或反代地址，已自动切换为本地拼多多专家SOP重构引擎。",
                 "analysis": "基于拼多多千川/全站流量竞价模型完成重构。"
             }
         
-        selected_model = model_name if model_name else "deepseek-chat"
+        selected_model = model_name if model_name else "gemini-3.8-flash-high"
         try:
-            url = "https://api.deepseek.com/chat/completions"
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}"
-            }
-            body = {
-                "model": selected_model,
-                "messages": [
+            call_res = PddProductAnalyzer.call_ai_chat_completions(
+                messages=[
                     {"role": "system", "content": "你是一名精通拼多多底层算法、全站推广起爆与合规防封店的顶尖电商操盘手。"},
                     {"role": "user", "content": prompt_content}
                 ],
-                "temperature": 0.7
+                api_key=api_key,
+                model_name=selected_model,
+                base_url=base_url,
+                temperature=0.7
+            )
+            return {
+                "used_mode": "ai_api",
+                "model": selected_model,
+                "provider": "EasyCLIProxy" if base_url else "DeepSeek",
+                "analysis": call_res["content"]
             }
-            req = urllib.request.Request(url, data=json.dumps(body).encode('utf-8'), headers=headers)
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                result = json.loads(resp.read().decode('utf-8'))
-                return {
-                    "used_mode": "deepseek_api",
-                    "model": selected_model,
-                    "analysis": result["choices"][0]["message"]["content"]
-                }
         except Exception as e:
             return {
                 "used_mode": "fallback_offline",
                 "model": selected_model,
                 "error": str(e),
-                "message": f"DeepSeek API 调用失败 ({str(e)})，已自动切换为本地启发式专家规则。"
+                "message": f"AI API 调用失败 ({str(e)})，已自动切换为本地启发式专家规则。"
             }

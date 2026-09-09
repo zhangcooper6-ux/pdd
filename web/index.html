@@ -751,19 +751,25 @@
               <label for="enableInterceptPricingCheckbox" style="cursor: pointer; font-size: 11px; font-weight: bold; color: #38bdf8; margin: 0;" title="开启：执行卡位破局截流算法计算我方拼单价；关闭：直接沿用对标原价">⚡ 启用截流拼单价算法 (关则沿用对标原价)</label>
             </div>
 
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: rgba(15, 23, 42, 0.6); padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: rgba(15, 23, 42, 0.6); padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
               <div style="display: flex; align-items: center; gap: 6px;">
                 <input type="checkbox" id="enableAiModelCheckbox" onchange="toggleAiModelSwitch()" style="cursor: pointer; accent-color: #38bdf8; width: 14px; height: 14px;">
                 <label for="enableAiModelCheckbox" style="cursor: pointer; font-size: 11px; font-weight: bold; color: #f8fafc; margin: 0;">🤖 启用AI大模型增强</label>
               </div>
-              <div id="aiModelConfigGroup" style="display: none; align-items: center; gap: 6px;">
-                <select class="form-select" id="deepseekModelSelect" onchange="saveAiConfig()" style="padding: 3px 6px; font-size: 11px; width: 165px; background: #0b1120; color: #38bdf8; border: 1px solid #1e293b;">
-                  <option value="deepseek-chat" selected>deepseek-chat (通用V3)</option>
-                  <option value="deepseek-v4-flash">⚡ deepseek-v4-flash (极速)</option>
-                  <option value="deepseek-reasoner">🧠 deepseek-reasoner (R1思考)</option>
+              <div id="aiModelConfigGroup" style="display: none; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <!-- 服务提供商 -->
+                <select class="form-select" id="aiProviderSelect" onchange="onAiProviderChange()" style="padding: 3px 6px; font-size: 11px; width: 155px; background: #0b1120; color: #38bdf8; border: 1px solid #1e293b;">
+                  <option value="easycli" selected>⚡ EasyCLIProxy (反代)</option>
+                  <option value="deepseek">🧠 DeepSeek 官方</option>
+                  <option value="custom">🌐 自定义 OpenAI 兼容</option>
                 </select>
-                <input type="password" class="form-input" id="deepseekApiKey" placeholder="输入并持久化 sk-..." oninput="saveAiConfig()" style="padding: 3px 8px; font-size: 11px; width: 170px;">
-                <span id="aiKeySavedToast" style="font-size: 10px; color: #34d399; display: none;">✅ 已保存</span>
+                <!-- 反代Base URL -->
+                <input type="text" class="form-input" id="aiBaseUrlInput" placeholder="反代地址 (如 http://127.0.0.1:8317/v1)" value="http://127.0.0.1:8317/v1" oninput="saveAiConfig()" style="padding: 3px 8px; font-size: 11px; width: 190px;">
+                <!-- 模型ID -->
+                <input type="text" class="form-input" id="aiModelIdInput" placeholder="模型ID (如 gemini-3.8-flash-high)" value="gemini-3.8-flash-high" oninput="saveAiConfig()" style="padding: 3px 8px; font-size: 11px; width: 160px;">
+                <!-- API Key -->
+                <input type="password" class="form-input" id="deepseekApiKey" placeholder="API Key (默认 123456 / sk-...)" oninput="saveAiConfig()" style="padding: 3px 8px; font-size: 11px; width: 145px;">
+                <span id="aiKeySavedToast" style="font-size: 10px; color: #34d399; display: none;">✅ 配置已保存</span>
               </div>
             </div>
           </div>
@@ -2588,10 +2594,11 @@
       if (singleUnitCostEl) singleUnitCostEl.value = baseCost;
       const mode = document.getElementById('pddModeSelect').value;
       
-      // 检查是否开启 AI 大模型开关并提取持久化 API Key
+      // 检查是否开启 AI 大模型开关并提取配置
       const isAiEnabled = document.getElementById('enableAiModelCheckbox') ? document.getElementById('enableAiModelCheckbox').checked : false;
       const apiKey = isAiEnabled ? (document.getElementById('deepseekApiKey').value.trim() || undefined) : undefined;
-      const deepseekModel = document.getElementById('deepseekModelSelect') ? document.getElementById('deepseekModelSelect').value : 'deepseek-chat';
+      const aiModelId = isAiEnabled ? (document.getElementById('aiModelIdInput').value.trim() || 'gemini-3.8-flash-high') : 'gemini-3.8-flash-high';
+      const aiBaseUrl = isAiEnabled ? (document.getElementById('aiBaseUrlInput').value.trim() || undefined) : undefined;
 
       // 智能识别单行/多行混合文本：支持空格分隔（如 "标题 https://..."）或换行分隔
       let customTitle = document.getElementById('customTargetTitle').value.trim() || undefined;
@@ -2655,7 +2662,8 @@
             base_cost: baseCost,
             strategy_mode: mode,
             api_key: apiKey,
-            deepseek_model: deepseekModel,
+            deepseek_model: aiModelId,
+            base_url: aiBaseUrl,
             custom_title: customTitle,
             custom_skus: customSkus,
             express_fee: expressFee,
@@ -3288,6 +3296,26 @@
     }
 
     // AI 大模型配置持久化与开关控制
+    function onAiProviderChange() {
+      const provider = document.getElementById('aiProviderSelect').value;
+      const baseUrlInput = document.getElementById('aiBaseUrlInput');
+      const modelIdInput = document.getElementById('aiModelIdInput');
+      const keyInput = document.getElementById('deepseekApiKey');
+
+      if (provider === 'easycli') {
+        baseUrlInput.value = 'http://127.0.0.1:8317/v1';
+        modelIdInput.value = 'gemini-3.8-flash-high';
+        keyInput.placeholder = '选填 (反代默认 123456)';
+      } else if (provider === 'deepseek') {
+        baseUrlInput.value = 'https://api.deepseek.com/v1';
+        modelIdInput.value = 'deepseek-chat';
+        keyInput.placeholder = '必填 (sk-...)';
+      } else {
+        keyInput.placeholder = 'API Key (如有)';
+      }
+      saveAiConfig();
+    }
+
     function toggleAiModelSwitch() {
       const checkbox = document.getElementById('enableAiModelCheckbox');
       const configGroup = document.getElementById('aiModelConfigGroup');
@@ -3305,16 +3333,16 @@
     }
 
     function saveAiConfig() {
+      const providerSelect = document.getElementById('aiProviderSelect');
+      const baseUrlInput = document.getElementById('aiBaseUrlInput');
+      const modelIdInput = document.getElementById('aiModelIdInput');
       const keyInput = document.getElementById('deepseekApiKey');
-      const modelSelect = document.getElementById('deepseekModelSelect');
       const toast = document.getElementById('aiKeySavedToast');
       
-      if (keyInput) {
-        localStorage.setItem('pdd_deepseek_api_key', keyInput.value.trim());
-      }
-      if (modelSelect) {
-        localStorage.setItem('pdd_deepseek_model', modelSelect.value);
-      }
+      if (providerSelect) localStorage.setItem('pdd_ai_provider', providerSelect.value);
+      if (baseUrlInput) localStorage.setItem('pdd_ai_base_url', baseUrlInput.value.trim());
+      if (modelIdInput) localStorage.setItem('pdd_ai_model_id', modelIdInput.value.trim());
+      if (keyInput) localStorage.setItem('pdd_deepseek_api_key', keyInput.value.trim());
       
       if (toast) {
         toast.style.display = 'inline';
@@ -3324,23 +3352,25 @@
 
     function initAiConfigFromStorage() {
       const savedEnabled = localStorage.getItem('pdd_ai_enabled');
-      const savedKey = localStorage.getItem('pdd_deepseek_api_key');
-      const savedModel = localStorage.getItem('pdd_deepseek_model');
+      const savedProvider = localStorage.getItem('pdd_ai_provider') || 'easycli';
+      const savedBaseUrl = localStorage.getItem('pdd_ai_base_url') || 'http://127.0.0.1:8317/v1';
+      const savedModelId = localStorage.getItem('pdd_ai_model_id') || 'gemini-3.8-flash-high';
+      const savedKey = localStorage.getItem('pdd_deepseek_api_key') || '';
       
       const checkbox = document.getElementById('enableAiModelCheckbox');
       const configGroup = document.getElementById('aiModelConfigGroup');
+      const providerSelect = document.getElementById('aiProviderSelect');
+      const baseUrlInput = document.getElementById('aiBaseUrlInput');
+      const modelIdInput = document.getElementById('aiModelIdInput');
       const keyInput = document.getElementById('deepseekApiKey');
-      const modelSelect = document.getElementById('deepseekModelSelect');
       
-      if (savedKey && keyInput) {
-        keyInput.value = savedKey;
-      }
-      if (savedModel && modelSelect) {
-        modelSelect.value = savedModel;
-      }
+      if (providerSelect) providerSelect.value = savedProvider;
+      if (baseUrlInput) baseUrlInput.value = savedBaseUrl;
+      if (modelIdInput) modelIdInput.value = savedModelId;
+      if (keyInput && savedKey) keyInput.value = savedKey;
       
       if (checkbox && configGroup) {
-        if (savedEnabled === 'true') {
+        if (savedEnabled === 'true' || savedEnabled === null) {
           checkbox.checked = true;
           configGroup.style.display = 'flex';
         } else {
