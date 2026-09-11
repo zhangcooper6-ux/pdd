@@ -1140,6 +1140,9 @@
               </div>
             </div>
 
+            <!-- 价格阶梯防倒挂与健全性智能诊断卡片 -->
+            <div id="pricingSanityAlertContainer" style="margin-bottom: 12px;"></div>
+
             <div class="table-responsive">
               <table id="batchPricingTable">
                 <thead>
@@ -1148,6 +1151,8 @@
                     <th>包含件数</th>
                     <th>单件成本(元)</th>
                     <th>拼单售价(元)</th>
+                    <th style="color:#38bdf8; background:rgba(56, 189, 248, 0.08);">折合单件(元)</th>
+                    <th style="color:#fbbf24; background:rgba(251, 191, 36, 0.08);">阶梯防倒挂诊断</th>
                     <th>售价微调(元)</th>
                     <th>立减券(元)</th>
                     <th>折率</th>
@@ -2042,10 +2047,11 @@
 
     // 算价表相关 JS
     let batchSkusList = [
-      { sku_name: '买一送一 (两把装)', sku_qty: 2, unit_cost: 0.94, selling_price: 21.0, price_adjust: 0.0, coupon_amount: 3.0, discount_rate: 0.7, daily_orders: 210 },
-      { sku_name: '3把装 (高客单)', sku_qty: 3, unit_cost: 0.94, selling_price: 27.0, price_adjust: 0.0, coupon_amount: 4.0, discount_rate: 0.7, daily_orders: 13 },
-      { sku_name: '2把装 (活动款)', sku_qty: 2, unit_cost: 0.94, selling_price: 13.9, price_adjust: 0.0, coupon_amount: 2.0, discount_rate: 0.7, daily_orders: 48 },
-      { sku_name: '1把装 (引流福利)', sku_qty: 1, unit_cost: 0.94, selling_price: 8.9, price_adjust: 0.0, coupon_amount: 1.0, discount_rate: 0.7, daily_orders: 162 }
+      { sku_name: '【尝鲜单只装】食品级加厚猫粮狗粮勺·自带封口夹', sku_qty: 1, unit_cost: 0.94, selling_price: 7.9, price_adjust: 0.0, coupon_amount: 1.0, discount_rate: 0.7, daily_orders: 160 },
+      { sku_name: '【实发共2把】带夹猫粮狗粮勺*2把 (多宠替换更实惠)', sku_qty: 2, unit_cost: 0.94, selling_price: 12.9, price_adjust: 0.0, coupon_amount: 2.0, discount_rate: 0.7, daily_orders: 80 },
+      { sku_name: '👑【店长力荐/实发共3件】带夹猫粮勺2把+配趣味逗猫球', sku_qty: 2, unit_cost: 0.94, selling_price: 15.9, price_adjust: 0.0, coupon_amount: 3.0, discount_rate: 0.7, daily_orders: 210 },
+      { sku_name: '⭐【多宠超值3件套】大容量猫粮狗粮勺3把+配防潮密封夹', sku_qty: 3, unit_cost: 0.94, selling_price: 21.9, price_adjust: 0.0, coupon_amount: 3.0, discount_rate: 0.7, daily_orders: 35 },
+      { sku_name: '🏆【全家福囤货4件套】加厚猫狗粮勺2把+多功能量勺+解闷球', sku_qty: 4, unit_cost: 0.94, selling_price: 28.9, price_adjust: 0.0, coupon_amount: 4.0, discount_rate: 0.7, daily_orders: 15 }
     ];
 
     function initDefaultBatchTable() {
@@ -2064,8 +2070,8 @@
       const fixedPackCost = express + material + labor + insurance;
       const deductFactor = Math.max(0.1, 1.0 - refund - commission);
 
-      // 实时寻找全表中【拼单售价】最低的 SKU 作为真实的引流款基准价 (若无有效最低价则默认8.9元)
-      let currentAttrPrice = 8.9;
+      // 实时寻找全表中【拼单售价】最低的有效引流款基准价
+      let currentAttrPrice = 7.9;
       if (batchSkusList && batchSkusList.length > 0) {
         const validPrices = batchSkusList
           .map(s => parseFloat(s.selling_price))
@@ -2077,27 +2083,38 @@
 
       if (qty === 1) {
         const attrBasePrice = ((uCost * 1 + fixedPackCost) + 0.8) / deductFactor;
-        const goldenAttrPrice = Math.max(8.9, Math.round((attrBasePrice + 4.2) * 10) / 10);
+        const goldenAttrPrice = Math.max(7.9, Math.round((attrBasePrice + 2.8) * 10) / 10);
         return { selling_price: goldenAttrPrice, coupon_amount: 1.0 };
       }
 
-      let newSellingPrice = 13.9;
+      let newSellingPrice = 12.9;
       let newCouponAmount = 2.0;
+      const hasAccessory = /球|逗猫|玩具|礼包|配件|喷头|夹/i.test(skuName);
 
       if (qty === 2) {
-        if (skuName.includes('买一送一') || skuName.includes('两把') || skuName.includes('双件') || idx === 0) {
-          newSellingPrice = Math.round(currentAttrPrice * 2.36 * 10) / 10;
+        // 2件装基础款 (比单买大幅便宜，折合单件严格低于1件装)
+        const heroBase = Math.round((((uCost * 2 + fixedPackCost) + 4.8) / deductFactor) * 10) / 10;
+        const base2Price = Math.max(12.9, heroBase);
+        if (hasAccessory || skuName.includes('店长力荐') || idx === 2) {
+          // 带高感知配件款：合理心理溢价 +3.0 元，严控溢价杜绝买家比价倒挂
+          newSellingPrice = Math.round((base2Price + 3.0) * 10) / 10;
           newCouponAmount = 3.0;
         } else {
-          const heroBase = Math.round((((uCost * 2 + fixedPackCost) + 5.5) / deductFactor) * 10) / 10;
-          newSellingPrice = Math.max(13.9, heroBase);
+          newSellingPrice = base2Price;
           newCouponAmount = 2.0;
         }
+      } else if (qty === 3) {
+        // 3件装：折合单件严格递减，消除原先27元严重倒挂
+        const tier3Profit = 8.5;
+        const tier3CostPrice = Math.round((((uCost * 3 + fixedPackCost) + tier3Profit) / deductFactor) * 10) / 10;
+        const maxSanityPrice = Math.round((currentAttrPrice * 3 * 0.92) * 10) / 10;
+        newSellingPrice = Math.min(Math.max(21.9, tier3CostPrice), Math.max(22.9, maxSanityPrice));
+        newCouponAmount = 3.0;
       } else {
-        // qty >= 3 时：以黄金 4 阶梯逻辑进行合理阶梯算价，平滑增长避免突破天花板
+        // qty >= 4 时：以黄金 4 阶梯逻辑进行合理阶梯算价，平滑增长并拦截 4.4 倍率
         const tierAddOn = 10.0 + (qty - 3) * 2.5;
         const costBasedPrice = Math.round((((uCost * qty + fixedPackCost) + tierAddOn) / deductFactor) * 10) / 10;
-        const ratioBasedPrice = Math.round(currentAttrPrice * (3.03 + (qty - 3) * 0.3) * 10) / 10;
+        const ratioBasedPrice = Math.round(currentAttrPrice * (3.1 + (qty - 3) * 0.25) * 10) / 10;
         const profitPrice = Math.max(ratioBasedPrice, costBasedPrice);
 
         const maxSafePrice = Math.round(currentAttrPrice * 4.4 * 10) / 10;
@@ -2298,6 +2315,12 @@
             const originalSellingPrice = Number(s.selling_price) || 0.0;
             const adjustedSellingPrice = Math.max(0.01, originalSellingPrice + adjustVal);
 
+            // 折合单价与阶梯健康度诊断
+            const skuQty = Number(s.sku_qty) || 1;
+            const unitSellingPrice = adjustedSellingPrice / skuQty;
+            const sanityEval = evaluateSkuSanity(idx, batchSkusList);
+            const healthTag = sanityEval.statusTag;
+
             // 仅针对“调整-真实保本ROI(含退款)”进行独立沙盒测算：
             // 调整后毛利 = 调整售价 - 快递 - 耗材 - 人工 - 运费险 - 商品总成本 - (调整售价 * 退款率) - (调整售价 * 平台扣点)
             const goodsCost = Number(s.goods_cost) || (Number(s.unit_cost) * Number(s.sku_qty));
@@ -2314,10 +2337,12 @@
             const adjustColor = adjustVal > 0 ? '#34d399' : (adjustVal < 0 ? '#f87171' : '#94a3b8');
 
             tr.innerHTML = `
-              <td><input type="text" class="form-input" style="padding:3px 6px; font-size:11.5px; width:115px;" value="${s.sku_name}" onchange="updateBatchSku(${idx}, 'sku_name', this.value)"></td>
+              <td><input type="text" class="form-input" style="padding:3px 6px; font-size:11.5px; width:135px;" value="${s.sku_name}" onchange="updateBatchSku(${idx}, 'sku_name', this.value)"></td>
               <td><input type="number" class="form-input" style="padding:3px 4px; font-size:11.5px; width:44px;" value="${s.sku_qty}" onchange="updateBatchSku(${idx}, 'sku_qty', parseInt(this.value))"></td>
               <td><input type="number" class="form-input" style="padding:3px 4px; font-size:11.5px; width:52px;" value="${s.unit_cost}" step="0.1" onchange="updateBatchSku(${idx}, 'unit_cost', parseFloat(this.value))"></td>
-              <td><input type="number" class="form-input" style="padding:3px 4px; font-size:11.5px; width:56px;" value="${s.selling_price}" step="0.1" onchange="updateBatchSku(${idx}, 'selling_price', parseFloat(this.value))"></td>
+              <td><input type="number" class="form-input" style="padding:3px 4px; font-size:11.5px; width:56px;" value="${s.selling_price}" step="0.1" oninput="onSellingPriceDirectInput(${idx}, this.value)" onchange="updateBatchSku(${idx}, 'selling_price', parseFloat(this.value))"></td>
+              <td id="skuUnitPrice_${idx}" style="color:#38bdf8; font-weight:bold; font-size:11px;">¥${formatPrice(unitSellingPrice)}/件</td>
+              <td id="skuSanityStatus_${idx}">${healthTag}</td>
               <td><input type="number" class="form-input" id="skuPriceAdjust_${idx}" style="padding:3px 4px; font-size:11.5px; width:52px; color:${adjustColor}; font-weight:bold; border-color:${adjustVal !== 0 ? '#38bdf8' : ''};" value="${adjustVal}" step="0.5" oninput="onSkuPriceAdjustChange(${idx}, this.value)"></td>
               <td><input type="number" class="form-input" style="padding:3px 4px; font-size:11.5px; width:48px;" value="${s.coupon_amount}" step="0.5" onchange="updateBatchSku(${idx}, 'coupon_amount', parseFloat(this.value))"></td>
               <td><input type="number" class="form-input" style="padding:3px 4px; font-size:11.5px; width:46px;" value="${s.discount_rate}" step="0.05" onchange="updateBatchSku(${idx}, 'discount_rate', parseFloat(this.value))"></td>
@@ -2345,6 +2370,22 @@
           document.getElementById('sumDailyAd').innerText = '¥' + summary.total_daily_ad_spend.toLocaleString('zh-CN', {minimumFractionDigits:2});
           document.getElementById('sumDailyNetProfit').innerText = '¥' + summary.total_daily_net_profit.toLocaleString('zh-CN', {minimumFractionDigits:2});
           document.getElementById('sumMonthlyNetProfit').innerText = '¥' + summary.monthly_net_profit_est.toLocaleString('zh-CN', {minimumFractionDigits:2});
+
+          // 渲染价格阶梯防倒挂与健全性诊断横幅
+          const alertContainer = document.getElementById('pricingSanityAlertContainer');
+          if (alertContainer) {
+            if (summary.sanity_alerts && summary.sanity_alerts.length > 0) {
+              const alertHtml = summary.sanity_alerts.map(a => {
+                const borderClr = a.level === 'danger' ? '#ef4444' : '#fbbf24';
+                const bgClr = a.level === 'danger' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(251, 191, 36, 0.15)';
+                const textClr = a.level === 'danger' ? '#fca5a5' : '#fde68a';
+                return `<div style="padding:7px 12px; margin-bottom:4px; background:${bgClr}; border-left:4px solid ${borderClr}; border-radius:6px; font-size:11.5px; color:${textClr}; display:flex; align-items:center; gap:6px;"><span>${a.message}</span></div>`;
+              }).join('');
+              alertContainer.innerHTML = alertHtml;
+            } else {
+              alertContainer.innerHTML = `<div style="padding:7px 12px; background:rgba(52, 211, 153, 0.08); border-left:4px solid #34d399; border-radius:6px; font-size:11.5px; color:#6ee7b7; display:flex; align-items:center; gap:6px;"><span>✅ 价格逻辑健全：全店 SKU 价格阶梯单调健康，折合单件严格递减，买家比价心理学检验 100% 通过！</span></div>`;
+            }
+          }
         }
       } catch (err) {
         console.error("批量算价失败:", err);
@@ -2441,6 +2482,138 @@
           const str = adjustedBreakevenRoi.toFixed(3);
           roiElem.innerText = str.endsWith('0') ? adjustedBreakevenRoi.toFixed(2) : str;
           roiElem.style.color = '#38bdf8';
+        }
+      }
+
+      // 实时重新校验整张表的折合单件与阶梯防倒挂诊断
+      runDynamicPricingSanityCheck();
+    }
+
+    // 权威的单条 SKU 阶梯防倒挂与比价心理学评估器
+    function evaluateSkuSanity(idx, list) {
+      if (!list || list.length === 0 || idx >= list.length) {
+        return {
+          statusTag: `<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:10.5px; background:rgba(52,211,153,0.15); color:#34d399; font-weight:bold;">✔ 阶梯健康</span>`,
+          alertMsg: null
+        };
+      }
+
+      const curSku = list[idx];
+      const curQty = Number(curSku.sku_qty) || 1;
+      const curEffP = Math.max(0.01, (Number(curSku.selling_price) || 0) + (Number(curSku.price_adjust) || 0));
+      const curUPrice = curEffP / curQty;
+
+      // 真正外部独立加配词 (排除商品自带属性如"带夹/封口夹")
+      const isExternalGift = /逗猫球|解闷球|玩具球|大礼包|喷枪|无痕挂钩|海绵擦/i.test(curSku.sku_name);
+
+      // 对比前面所有行中件数更小的 SKU
+      for (let p = 0; p < idx; p++) {
+        const prevSku = list[p];
+        const prevQty = Number(prevSku.sku_qty) || 1;
+        const prevEffP = Math.max(0.01, (Number(prevSku.selling_price) || 0) + (Number(prevSku.price_adjust) || 0));
+        const prevUPrice = prevEffP / prevQty;
+
+        // 如果当前件数更多，但折合单件更贵
+        if (curQty > prevQty && curUPrice > prevUPrice + 0.1) {
+          const diff = curUPrice - prevUPrice;
+          if (isExternalGift && diff <= 1.2) {
+            return {
+              statusTag: `<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:10.5px; background:rgba(251,191,36,0.15); color:#fbbf24; font-weight:bold;">👑 高感知加配</span>`,
+              alertMsg: null
+            };
+          } else {
+            return {
+              statusTag: `<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:10.5px; background:rgba(239,68,68,0.2); color:#f87171; font-weight:bold;">⚠️ 单价倒挂</span>`,
+              alertMsg: `严重单价倒挂！第 ${idx+1} 行【${curSku.sku_name}】(${curQty}件/折合 ¥${curUPrice.toFixed(2)}/件) 高于第 ${p+1} 行【${prevSku.sku_name}】(折合 ¥${prevUPrice.toFixed(2)}/件)，买多反而更贵，买家绝不买单！`
+            };
+          }
+        }
+      }
+
+      return {
+        statusTag: `<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:10.5px; background:rgba(52,211,153,0.15); color:#34d399; font-weight:bold;">✔ 阶梯健康</span>`,
+        alertMsg: null
+      };
+    }
+
+    // 拼单售价直接输入实时监听 (实现零延迟防倒挂诊断)
+    function onSellingPriceDirectInput(idx, val) {
+      const num = parseFloat(val);
+      if (batchSkusList[idx]) {
+        batchSkusList[idx].selling_price = isNaN(num) ? 0 : num;
+        runDynamicPricingSanityCheck();
+      }
+    }
+
+    // 纯前端极速价格阶梯防倒挂与比价心理学动态诊断器
+    function runDynamicPricingSanityCheck() {
+      if (!batchSkusList || batchSkusList.length === 0) return;
+
+      const formatPrice = (num) => {
+        const str = num.toFixed(3);
+        return str.endsWith('0') ? num.toFixed(2) : str;
+      };
+
+      const alerts = [];
+      const effectivePrices = [];
+
+      for (let i = 0; i < batchSkusList.length; i++) {
+        const sku = batchSkusList[i];
+        const origP = Number(sku.selling_price) || 0;
+        const adjP = Number(sku.price_adjust) || 0;
+        const effP = Math.max(0.01, origP + adjP);
+        const qty = Number(sku.sku_qty) || 1;
+        const uPrice = effP / qty;
+
+        effectivePrices.push(effP);
+
+        // 动态刷新当前行的折合单件文本显示
+        const uElem = document.getElementById(`skuUnitPrice_${i}`);
+        if (uElem) {
+          uElem.innerText = `¥${formatPrice(uPrice)}/件`;
+        }
+      }
+
+      // 1. 跨 SKU 最大倍率拦截 (拼多多 4.4 倍红线)
+      if (effectivePrices.length > 0) {
+        const minP = Math.min(...effectivePrices);
+        const maxP = Math.max(...effectivePrices);
+        const ratio = Math.round((maxP / minP) * 10) / 10;
+        if (ratio > 4.4) {
+          alerts.push({
+            level: 'warning',
+            message: `⚠️ 跨 SKU 最大有效售价比值达 ${ratio} 倍 (超 4.4 倍红线)，极易触发拼多多低价引流/阴阳 SKU 降权限流！`
+          });
+        }
+      }
+
+      // 2. 遍历校验所有行的单价阶梯健康度 (买多折合单件必须更便宜)
+      for (let i = 0; i < batchSkusList.length; i++) {
+        const evalRes = evaluateSkuSanity(i, batchSkusList);
+        const statusElem = document.getElementById(`skuSanityStatus_${i}`);
+        if (statusElem) {
+          statusElem.innerHTML = evalRes.statusTag;
+        }
+        if (evalRes.alertMsg) {
+          alerts.push({
+            level: 'danger',
+            message: evalRes.alertMsg
+          });
+        }
+      }
+
+      // 3. 动态更新上方诊断看板
+      const alertContainer = document.getElementById('pricingSanityAlertContainer');
+      if (alertContainer) {
+        if (alerts.length > 0) {
+          alertContainer.innerHTML = alerts.map(a => {
+            const borderClr = a.level === 'danger' ? '#ef4444' : '#fbbf24';
+            const bgClr = a.level === 'danger' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(251, 191, 36, 0.15)';
+            const textClr = a.level === 'danger' ? '#fca5a5' : '#fde68a';
+            return `<div style="padding:7px 12px; margin-bottom:4px; background:${bgClr}; border-left:4px solid ${borderClr}; border-radius:6px; font-size:11.5px; color:${textClr}; display:flex; align-items:center; gap:6px;"><span>${a.message}</span></div>`;
+          }).join('');
+        } else {
+          alertContainer.innerHTML = `<div style="padding:7px 12px; background:rgba(52, 211, 153, 0.08); border-left:4px solid #34d399; border-radius:6px; font-size:11.5px; color:#6ee7b7; display:flex; align-items:center; gap:6px;"><span>✅ 价格逻辑健全：全店 SKU 价格阶梯单调健康，折合单件严格递减，买家比价心理学检验 100% 通过！</span></div>`;
         }
       }
     }
@@ -3015,11 +3188,13 @@
 
       if (syncList) {
         batchSkusList = syncList.map((item, idx) => {
-          let qty = 1;
+          let qty = item.sku_qty ? parseInt(item.sku_qty) : 1;
           const name = item.orig_name || '';
-          if (name.includes('4个') || name.includes('4件')) qty = 4;
-          else if (name.includes('3个') || name.includes('3件')) qty = 3;
-          else if (name.includes('2个') || name.includes('2件') || name.includes('两把')) qty = 2;
+          if (!item.sku_qty) {
+            if (name.includes('4个') || name.includes('4件')) qty = 4;
+            else if (name.includes('3个') || name.includes('3件')) qty = 3;
+            else if (name.includes('2个') || name.includes('2件') || name.includes('两把')) qty = 2;
+          }
 
           let coupon = 2.0;
           let dailyOrders = 30;
@@ -3028,7 +3203,7 @@
           else if (qty >= 3) { coupon = 4.0; dailyOrders = 20; }
 
           return {
-            sku_name: item.orig_name || `规格套餐 ${idx+1}`,
+            sku_name: item.optimized_name || item.orig_name || `规格套餐 ${idx+1}`,
             sku_qty: qty,
             unit_cost: baseCostInput > 0 ? baseCostInput : 0.94,
             selling_price: Number(item.my_intercept_price || item.orig_price || 9.9),
@@ -3039,9 +3214,9 @@
           };
         });
 
-        // 重新渲染批量算价矩阵大盘看板
+        // 重新渲染批量算价矩阵大盘看板并自动做一次防倒挂诊断
         renderBatchPricingTable();
-        showToast("已全量同步真实对标规格到【🧮 智能算价与投产模拟器】看板！");
+        showToast("已全量同步 AI 重塑高权重规格到【🧮 智能算价与投产模拟器】看板！");
       } else if (skuMatrix.skus && skuMatrix.skus.length > 0) {
         batchSkusList = skuMatrix.skus.map((s, idx) => {
           let qty = 1;
@@ -3065,7 +3240,7 @@
           }
 
           return {
-            sku_name: s.sku_name || `规格套餐 ${idx+1}`,
+            sku_name: s.optimized_name || s.sku_name || `规格套餐 ${idx+1}`,
             sku_qty: qty,
             unit_cost: baseCostInput > 0 ? baseCostInput : 0.94,
             selling_price: Number(s.price || s.selling_price || 9.9),
@@ -3077,7 +3252,7 @@
         });
 
         renderBatchPricingTable();
-        showToast("已全自动同步对标黄金 SKU 矩阵到【🧮 智能算价与投产模拟器】看板！");
+        showToast("已全自动同步对标黄金高权重 SKU 矩阵到【🧮 智能算价与投产模拟器】看板！");
       }
     }
 

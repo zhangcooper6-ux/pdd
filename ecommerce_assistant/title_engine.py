@@ -102,6 +102,10 @@ class UniversalTitleEngine:
         3. 保留原始规格的颜色/款式/件数信息，保障账实相符，通过平台审核。
         """
         clean_name = orig_name.strip()
+        # 彻底清洗 ERP 或爬虫残留代码后缀，如 -N, _N, -01, -A, (N) 等
+        clean_name = re.sub(r'[\-_/][A-Za-z0-9]{1,4}$', '', clean_name).strip()
+        clean_name = re.sub(r'\([A-Za-z0-9]\)$', '', clean_name).strip()
+
         core_kw, _ = cls.extract_core_and_modifiers(raw_title)
         if not core_kw or core_kw == "多功能爆款":
             core_kw = "正品好物"
@@ -109,42 +113,52 @@ class UniversalTitleEngine:
         # 提取颜色或款式前缀（如“绿灰色”、“随机色”、“加长手柄”、“升级款”等）
         color_match = re.search(r"^([\u4e00-\u9fa5a-zA-Z0-9\+]+?)(?:【|（|\(|$)", clean_name)
         prefix_style = color_match.group(1).strip() if color_match else ""
-        if prefix_style in ["店长推荐", "爆款", "热销", "升级加厚", "加厚", "拍一发二", "拍1发2", "买1送1", "买一送一"]:
+        if prefix_style in ["店长推荐", "店长力荐", "爆款", "热销", "升级加厚", "加厚", "拍一发二", "拍1发2", "买1送1", "买一送一"]:
             prefix_style = ""
             
         style_desc = f"{prefix_style}·" if prefix_style else ""
         is_cleaning = any(w in raw_title for w in ["油污", "清洁", "清洗", "去油", "洗洁", "洗涤", "抽油烟机"])
-        is_pet = any(w in raw_title for w in ["宠物", "狗粮", "猫粮", "猫咪", "狗狗"])
-        
+        is_pet = any(w in raw_title for w in ["宠物", "狗粮", "猫粮", "猫咪", "狗狗"]) or any(w in clean_name for w in ["猫", "狗", "宠"])
+        has_accessory = any(w in clean_name for w in ["球", "逗猫", "玩具", "配件", "刷", "海绵", "喷头", "喷枪", "夹", "挂钩"])
+
         # 针对件数结构化重塑（黄金二段/三段式）
         if sku_qty == 1:
             if is_cleaning:
                 opt_name = f"【尝鲜体验装】{core_kw}500ml (试用1瓶/限购1件)"
             elif is_pet:
-                opt_name = f"【新客尝鲜装】{core_kw} 1把装·配防潮封口夹"
+                opt_name = f"【尝鲜单只装】食品级加厚{core_kw}·自带封口夹"
             else:
                 opt_name = f"【尝鲜体验装】{style_desc}{core_kw} (1件装·限购1件)"
         elif sku_qty == 2:
             if is_cleaning:
-                opt_name = f"【实发共2瓶】厨房抽油烟机{core_kw}500ml*2瓶 + 配高压专用喷头"
+                if has_accessory:
+                    opt_name = f"【实发共2瓶】厨房抽油烟机{core_kw}500ml*2瓶 + 配高压专用喷头"
+                else:
+                    opt_name = f"【拍1发2实发2瓶】厨房{core_kw}500ml*2瓶 (双瓶超值装)"
             elif is_pet:
-                opt_name = f"🔥【实发共2件】{core_kw} 2把装 + 配趣味逗猫球 (加厚多功能)"
+                if has_accessory:
+                    opt_name = f"👑【店长力荐/实发共3件】带夹{core_kw} 2把 + 配趣味逗猫球"
+                else:
+                    opt_name = f"【实发共2把】带夹{core_kw}*2把 (多宠替换更实惠)"
             else:
-                opt_name = f"🔥【实发共2件】{style_desc}{core_kw} 2件套 + 配无痕挂钩 (80%买家选择)"
+                if has_accessory:
+                    opt_name = f"👑【实发共3件】{style_desc}{core_kw} 2件套 + 配无痕挂钩 (80%买家选择)"
+                else:
+                    opt_name = f"【拍1发2实发2件】{style_desc}{core_kw} 2件套 (双件更优惠)"
         elif sku_qty == 3:
             if is_cleaning:
                 opt_name = f"⭐【超值3瓶套组】{core_kw}500ml*3瓶 + 配专用喷头 + 强力纳米海绵2块"
             elif is_pet:
-                opt_name = f"⭐【多宠超值3件套】{core_kw} 3把装 + 配防潮密封夹3个"
+                opt_name = f"⭐【多宠超值3件套】大容量{core_kw} 3把 + 配防潮密封夹"
             else:
                 opt_name = f"⭐【超值3件套】{style_desc}{core_kw} 3件装 + 含防潮密封夹"
         elif sku_qty >= 4:
             if is_cleaning:
                 opt_name = f"🏆【整箱家庭量贩5件套】抽油烟机{core_kw}500ml*4瓶 + 高压喷枪 + 加厚百洁布"
             elif is_pet:
-                opt_name = f"🏆【多宠家庭囤货4件套】{core_kw} 4把装 + 配解闷玩具球大礼包"
+                opt_name = f"🏆【全家福囤货4件套】加厚{core_kw} 2把 + 多功能量勺 + 解闷球礼包"
             else:
-                opt_name = f"🏆【整箱家庭大容量4件套】{style_desc}{core_kw} 4件装 + 配挂钩收纳全套"
+                opt_name = f"🏆【全家福大容量4件套】{style_desc}{core_kw} 4件装 + 配挂钩收纳全套"
         else:
             opt_name = f"👑【升级豪华装】{style_desc}{core_kw} + 配实用配件"
 
@@ -172,12 +186,17 @@ class UniversalTitleEngine:
         is_cleaning = any(w in raw_title for w in ["油污", "清洁", "清洗", "去油", "洗洁", "洗涤", "抽油烟机"])
         is_pet = any(w in raw_title for w in ["宠物", "狗粮", "猫粮", "猫咪", "狗狗"])
 
+        # 智能词素去重：若 core_word 已经包含了“猫粮/狗粮/抽油烟机”，避免前缀词出现重复堆叠
+        pet_scene_a = "宠物专用" if ("猫" in core_word or "狗" in core_word) else "宠物猫粮狗粮"
+        pet_scene_b = "养宠常备" if ("猫" in core_word or "狗" in core_word) else "宠物猫咪狗狗"
+        clean_scene_a = "专用" if "抽油烟机" in core_word else "厨房抽油烟机"
+
         # ==================== 方案 A：🔥 黄金四段式大堆头爆款 (主推破零/拉爆CTR/防同店指纹) ====================
         # 结构：【大堆头营销前缀 1-10字】 + 【场景+核心词 11-20字】 + 【功效痛点词 21-28字】 + 【长尾词 28-30字】
         if is_cleaning:
-            t1 = f"【大促实发5件套】厨房抽油烟机{core_word}强力去重油泡沫型烟灶清洗剂"
+            t1 = f"【大促实发5件套】{clean_scene_a}{core_word}强力去重油泡沫型烟灶清洗剂"
         elif is_pet:
-            t1 = f"【实发4件大礼包】宠物猫粮狗粮{core_word}自带封口夹加厚防潮多功能铲"
+            t1 = f"【实发4件套】{pet_scene_a}{core_word}带封口夹食品级加厚防潮定量勺"
         elif is_clothing:
             t1 = f"【大促实发2件套】法式气质{core_word}显瘦垂感收腰日常通勤透气长裙"
         elif is_digital:
@@ -186,14 +205,14 @@ class UniversalTitleEngine:
             t1 = f"【大促实发4件套】家用厨房{core_word}食品级加厚耐用大容量挖面工具"
 
         if len(t1) > 30: t1 = t1[:30]
-        elif len(t1) < 26: t1 = (t1 + "包邮到家")[:30]
+        elif len(t1) < 27: t1 = (t1 + "包邮到家")[:30]
 
         # ==================== 方案 B：⚡ 高频搜索紧凑核心词款 (精准类目/防错配/吃满自然搜推) ====================
         # 结构：【前置刚需场景 1-8字】 + 【紧凑核心大词 9-18字】 + 【真实功效痛点 19-26字】 + 【微配件 27-30字】
         if is_cleaning:
             t2 = f"厨房抽油烟机{core_word}强力去油免洗一喷净烟灶多功能清洁剂配喷头"
         elif is_pet:
-            t2 = f"宠物猫咪狗狗{core_word}自带长柄封口夹食品级量勺铲米防潮配逗猫球"
+            t2 = f"【拍1发2】{pet_scene_b}{core_word}自带封口夹食品级加厚耐咬喂食勺"
         elif is_clothing:
             t2 = f"气质显瘦法式{core_word}小个子高级感舒适百搭垂感夏季短袖长裙正品"
         elif is_digital:
@@ -202,14 +221,14 @@ class UniversalTitleEngine:
             t2 = f"家用大号{core_word}多功能厨房挖面量米工具加厚食品级PP材质配挂钩"
 
         if len(t2) > 30: t2 = t2[:30]
-        elif len(t2) < 26: t2 = (t2 + "耐用实惠")[:30]
+        elif len(t2) < 27: t2 = (t2 + "耐用实惠")[:30]
 
         # ==================== 方案 C：👑 品质升级高溢价款 (母婴级/加厚质检/支撑高客单多件套) ====================
         # 结构：【品质信任标牌 1-8字】 + 【核心大词+场景 9-18字】 + 【母婴级环保材质 19-26字】 + 【质检无忧 27-30字】
         if is_cleaning:
             t3 = f"【温和不伤手】抽油烟机{core_word}食品级环保去油配方母婴家庭除垢剂"
         elif is_pet:
-            t3 = f"【加厚防断】宠物猫粮狗粮{core_word}食品级环保无异味长柄量米勺质检保障"
+            t3 = f"【加厚耐摔防咬】{pet_scene_a}{core_word}食品级无异味长柄喂食量米勺"
         elif is_clothing:
             t3 = f"【轻奢品质】法式重工复古{core_word}高端不挑身材收腰显瘦长裙官方正品"
         elif is_digital:
@@ -218,7 +237,7 @@ class UniversalTitleEngine:
             t3 = f"【加厚防断】{core_word}厨房家用大容量量杯食品级无异味环保质检品质"
 
         if len(t3) > 30: t3 = t3[:30]
-        elif len(t3) < 26: t3 = (t3 + "品质保障")[:30]
+        elif len(t3) < 27: t3 = (t3 + "品质保障")[:30]
 
         return {
             "core_word": core_word,

@@ -66,6 +66,7 @@ class EcommercePricingCalculator:
         inflated_original_price = round((selling_price + coupon_amount) / valid_discount, 2)
         reflow_price = round(inflated_original_price * valid_discount - coupon_amount, 2)
         total_discount_display = round(inflated_original_price - reflow_price, 2)
+        unit_selling_price = round(selling_price / sku_qty, 2) if sku_qty > 0 else selling_price
         
         return {
             "sku_name": sku_name,
@@ -73,6 +74,7 @@ class EcommercePricingCalculator:
             "unit_cost": unit_cost,
             "goods_cost": goods_cost,
             "selling_price": selling_price,
+            "unit_selling_price": unit_selling_price,
             "express_fee": express_fee,
             "material_fee": material_fee,
             "labor_fee": labor_fee,
@@ -158,6 +160,40 @@ class EcommercePricingCalculator:
             total_daily_ad_spend += day_ad
             total_daily_net_profit += day_net
 
+        # 价格阶梯健全性与防倒挂深度诊断 (拼多多买家比价心理学)
+        sanity_alerts = []
+        valid_prices = [s["selling_price"] for s in calculated_skus if s["selling_price"] > 0]
+        if valid_prices:
+            min_p = min(valid_prices)
+            max_p = max(valid_prices)
+            price_ratio = round(max_p / min_p, 2) if min_p > 0 else 1.0
+            if price_ratio > 4.4:
+                sanity_alerts.append({
+                    "level": "warning",
+                    "code": "HIGH_PRICE_RATIO",
+                    "message": f"跨 SKU 最大价差达到 {price_ratio} 倍 (超过 4.4 倍红线)，极易触发拼多多低价引流/阴阳 SKU 降权风控！"
+                })
+
+        # 校验折合单价是否单调递减 (买多折合单价必须更划算)
+        for i in range(len(calculated_skus)):
+            s_cur = calculated_skus[i]
+            q_cur = s_cur["sku_qty"]
+            u_cur = s_cur["unit_selling_price"]
+            for j in range(i + 1, len(calculated_skus)):
+                s_next = calculated_skus[j]
+                q_next = s_next["sku_qty"]
+                u_next = s_next["unit_selling_price"]
+                # 若下一项件数更多，但折合单件售价反而更贵，构成严重单价倒挂！
+                if q_next > q_cur and u_next > u_cur + 0.3:
+                    # 检查是否由于赠品导致
+                    has_acc = any(w in s_next["sku_name"] for w in ["球", "赠", "礼包", "配件", "喷头", "夹"])
+                    if not has_acc:
+                        sanity_alerts.append({
+                            "level": "danger",
+                            "code": "UNIT_PRICE_INVERSION",
+                            "message": f"严重单价倒挂！【{s_next['sku_name']}】({q_next}件/折合{u_next:.2f}元) 单价高于【{s_cur['sku_name']}】({q_cur}件/折合{u_cur:.2f}元)，买家会算账，买多反而贵将直接击穿转化率(CVR)！"
+                        })
+
         return {
             "skus": calculated_skus,
             "summary": {
@@ -168,6 +204,7 @@ class EcommercePricingCalculator:
                 "total_daily_net_profit": round(total_daily_net_profit, 2),
                 "monthly_net_profit_est": round(total_daily_net_profit * 30, 2),
                 "overall_roas": round(total_daily_revenue / total_daily_ad_spend, 2) if total_daily_ad_spend > 0 else 0.0,
-                "overall_net_margin": round(total_daily_net_profit / total_daily_revenue, 4) if total_daily_revenue > 0 else 0.0
+                "overall_net_margin": round(total_daily_net_profit / total_daily_revenue, 4) if total_daily_revenue > 0 else 0.0,
+                "sanity_alerts": sanity_alerts
             }
         }

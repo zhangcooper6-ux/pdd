@@ -240,14 +240,15 @@ class PddProductAnalyzer:
         is_pet = any(w in raw_title for w in ["宠物", "狗粮", "猫粮", "猫咪", "狗狗"])
         is_clothing = any(w in raw_title for w in ["连衣裙", "裙", "衣", "裤", "鞋"])
 
-        # 1. 算出引流卡位款基准 (1件成本 + 包裹硬成本 + 广告防守溢价，保底 8.9 元)
+        # 1. 算出引流卡位款基准 (保底 7.9 元，低门槛外显拉爆 CTR)
         attr_raw = ((base_cost * 1.0 + fixed_pack_cost) + 0.8) / deduct_factor
-        golden_attr_price = max(8.9, round(attr_raw + 4.2, 1))
+        golden_attr_price = max(7.9, round(attr_raw + 2.8, 1))
 
-        # 2. 依次推导 2件装高溢价买一送一、2件装活动款及 3件装大堆头
-        sku1_price = golden_attr_price # 8.9元
-        sku2_price = round(golden_attr_price * 2.36, 1) # 21.0元
-        sku3_price = min(round(golden_attr_price * 3.03, 1), round(golden_attr_price * 4.2, 1)) # 27.0元
+        # 2. 依次推导 2件套基础款、2件套主推加赠款(合理心理溢价+3元，严防倒挂) 及 3件装大堆头
+        sku1_price = golden_attr_price # 7.9元
+        hero_base_price = max(12.9, round((((base_cost * 2.0 + fixed_pack_cost) + 4.8) / deduct_factor), 1))
+        sku2_price = round(hero_base_price + 3.0, 1) # 15.9元 (比2件基础款仅加3元获高感知赠品，主推走量)
+        sku3_price = min(round(golden_attr_price * 3 * 0.92, 1), 22.9) # 21.9元 (折合单件严格低于单买，绝不倒挂)
 
         if profit_mode == "free_traffic":
             ad_strategy = "自然流为主：依靠【新客立减】+【拼单返现】+大额商品券破零，不长期开付费，前3天小额测款。"
@@ -269,18 +270,18 @@ class PddProductAnalyzer:
         c2, m2, mr2 = calc_sku_details(2, sku2_price)
         c3, m3, mr3 = calc_sku_details(3, sku3_price)
 
-        # 针对当前类目动态定制 SKU 名称
+        # 针对当前类目动态定制 SKU 名称 (回灌核心词、杜绝违规“送”字、彻底移除ERP代码后缀)
         if is_pet:
-            sku1_name = f"【尝鲜体验】{core_kw}(1件装)·限购1件"
-            sku2_name = f"🔥店长力荐：拍1发2【2把装+配趣味逗猫球】加厚带夹-N"
-            sku3_name = f"🏆【多宠家庭囤货4件套】母婴级加厚防断+配解闷玩具球大礼包"
+            sku1_name = f"【尝鲜单只装】食品级加厚{core_kw}·自带封口夹"
+            sku2_name = f"👑【店长力荐/实发共3件】带夹{core_kw} 2把 + 配趣味逗猫球"
+            sku3_name = f"🏆【全家福囤货4件套】加厚{core_kw} 2把 + 多功能量勺 + 解闷球礼包"
         elif is_clothing:
             sku1_name = f"【尝鲜专享】{core_kw}·初体验款"
-            sku2_name = f"👑【店长力荐/买1送1】{core_kw}实发2件套(80%买家选择)"
+            sku2_name = f"👑【店长力荐/拍1发2】{core_kw}实发2件套(80%买家选择)"
             sku3_name = f"🏆【全套尊享装】{core_kw}+配精美饰品礼盒"
         else:
             sku1_name = f"【尝鲜体验】{core_kw}(1件装)·限购1件"
-            sku2_name = f"👑镇店之宝：拍1发2【买1送1实发2件】加厚多用途+配无痕挂钩"
+            sku2_name = f"👑镇店之宝：拍1发2【实发2件】加厚多用途+配无痕挂钩"
             sku3_name = f"🏆【全家福大容量4件套】食品级加厚耐用+配挂钩收纳全套"
 
         skus = [
@@ -289,6 +290,7 @@ class PddProductAnalyzer:
                 "level": "引流位",
                 "role": "引流位 (吸睛CTR)",
                 "sku_name": sku1_name,
+                "optimized_name": sku1_name,
                 "spec_tag": "尝鲜体验 / 试用1件装",
                 "spec_guide": "单品小规格，主图左上角打'试用尝鲜'标，点击率拉满",
                 "cost": round(base_cost * 1.0, 2),
@@ -305,7 +307,8 @@ class PddProductAnalyzer:
                 "level": "主推爆款",
                 "role": "主推款 (承接80%订单拉高CTV)",
                 "sku_name": sku2_name,
-                "spec_tag": "🔥爆款热卖 / 买1送1 实发2件",
+                "optimized_name": sku2_name,
+                "spec_tag": "🔥爆款热卖 / 拍1发2 实发2件",
                 "spec_guide": "带'实发2件'大字视觉冲击，赠送运费险，转化率最高",
                 "cost": round(base_cost * 2.0, 2),
                 "price": sku2_price,
@@ -321,6 +324,7 @@ class PddProductAnalyzer:
                 "level": "高客单位",
                 "role": "利润位 (高客单/撑起全站出价上限)",
                 "sku_name": sku3_name,
+                "optimized_name": sku3_name,
                 "spec_tag": "整箱囤货 / 超值大包装",
                 "spec_guide": "堆头感强，专攻多买买家，抬升客单价与店铺利润",
                 "cost": round(base_cost * 3.0, 2),
@@ -445,7 +449,7 @@ class PddProductAnalyzer:
                     action_tag = "黄金引流卡位 (CTR)"
                 elif orig_price <= 10.0:
                     my_price = max(round(base_cost * sku_qty + fixed_pack + 1.5, 2), round(orig_price - 0.6, 2))
-                    action_tag = "买1送1高性价比 (CVR)"
+                    action_tag = "拍1发2高性价比 (CVR)"
                 elif orig_price <= 25.0:
                     my_price = min(round(orig_price - 1.2, 2), golden_hero_p)
                     action_tag = "黄金高溢价截流 (高ROI)"
