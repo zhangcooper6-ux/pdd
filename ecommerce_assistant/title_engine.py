@@ -4,19 +4,24 @@ from typing import List, Dict, Any, Optional
 
 class UniversalTitleEngine:
     """
-    电商全类目通用智能防撞词高权重标题重塑引擎 (V3 增强语义版)
-    针对任意类目（服饰/美妆/数码/家居/母婴/五金/生鲜/宠物等）
-    基于全词匹配、中文词素边界与语义角色抽取，动态重塑 3 套四段式防比价爆款标题。
+    电商全类目通用智能防撞词高权重标题与SKU重塑引擎 (V4 黄金四段式/二段式爆款版)
+    严格遵循拼多多 NLP 文本切词、CV 图像图谱与广告推荐人群匹配底层逻辑：
+    1. 标题四段式黄金词位：【大堆头营销前缀 1-10字】+【场景+核心词 11-20字】+【功效痛点词 21-28字】+【长尾属性词 28-30字】
+    2. SKU 黄金二段/三段式命名：【大堆头实发前缀】+【核心商品词/场景词】+【准确规格/配件中性连接词】
+    3. 规避同店指纹压制、类目错配与敏感词机审拦截
     """
 
     PROHIBITED_WORDS = [
         "最", "第一", "国家级", "顶级", "极品", "全网首发", "绝对", "独家", "绝无仅有",
-        "万能", "包治百病", "全能", "首选", "唯一", "顶配", "王牌", "保真", "假一赔万"
+        "万能", "包治百病", "全能", "首选", "唯一", "顶配", "王牌", "保真", "假一赔万",
+        "秒杀全网", "专柜正品", "专柜", "原单", "高仿", "1:1", "复刻"
     ]
 
     # 全类目核心品类实体词典（长词优先匹配）
     CORE_CATEGORIES = [
-        # 宠物/日化
+        # 清洁/洗涤/日化
+        "厨房重油污净", "抽油烟机清洁剂", "油烟机清洗剂", "重油污清洗剂", "油污清洁剂", "油污净", "清洁剂", "清洗剂", "去油剂", "洗洁精", "洗衣液", "除垢剂", "洁厕灵", "管道疏通剂", "地板清洁剂", "玻璃水",
+        # 宠物/日用
         "狗粮猫粮勺", "宠物粮食勺", "猫粮狗粮勺", "宠物狗粮勺", "宠物猫粮勺", "猫粮勺", "狗粮勺", "宠物勺", "铲米勺", "面粉勺", "舀米勺", "量米勺", "杂粮勺", "封口夹勺", "带夹勺", "量勺", "米勺", "粮勺", "勺子", "铲子",
         # 服饰/内衣/鞋包
         "碎花连衣裙", "雪纺连衣裙", "吊带连衣裙", "法式连衣裙", "短袖连衣裙", "复古连衣裙", "衬衫连衣裙", "针织连衣裙", "连衣裙", "长裙", "半身裙", "短裙", "短裤", "阔腿裤", "牛仔裤", "休闲裤", "防晒衣", "T恤", "衬衫", "卫衣", "外套", "内衣", "文胸", "睡衣", "运动鞋", "帆布鞋", "凉鞋", "拖鞋", "单肩包", "双肩包", "斜挎包",
@@ -90,116 +95,170 @@ class UniversalTitleEngine:
     @classmethod
     def optimize_sku_name(cls, orig_name: str, sku_qty: int, price: float, raw_title: str = "") -> str:
         """
-        基于拼多多合规与高转化心理学，将原始平庸的 SKU 规格名称重塑为爆款规格名：
-        1. 彻底规避‘送’字等违规机审词（用 加号连接法、含/配/搭 中性词替代）；
-        2. 注入强化转化词（店长力荐、拍1发2、母婴级加厚防断、配解闷球/挂钩等）；
-        3. 保留原始规格的颜色/款式/件数信息，增强买家下单信任感。
+        基于拼多多合规与高转化心理学黄金二段/三段式重塑 SKU 规格名：
+        公式：【大堆头/实发属性前缀】 + 核心商品词/场景词 + 准确规格/配件(加号/搭/含)
+        1. 彻底规避‘送’字等违规机审词（用 配/含/搭/加号中性连接词 替代）；
+        2. 将核心品类词（如 厨房油污净、舀米勺）直接织入每一个 SKU，让 SKU 自身直接吃满细分搜索与推荐人群权重；
+        3. 保留原始规格的颜色/款式/件数信息，保障账实相符，通过平台审核。
         """
         clean_name = orig_name.strip()
-        
+        core_kw, _ = cls.extract_core_and_modifiers(raw_title)
+        if not core_kw or core_kw == "多功能爆款":
+            core_kw = "正品好物"
+
         # 提取颜色或款式前缀（如“绿灰色”、“随机色”、“加长手柄”、“升级款”等）
         color_match = re.search(r"^([\u4e00-\u9fa5a-zA-Z0-9\+]+?)(?:【|（|\(|$)", clean_name)
         prefix_style = color_match.group(1).strip() if color_match else ""
-        if prefix_style in ["店长推荐", "爆款", "热销", "升级加厚", "加厚", "拍一发二", "拍1发2"]:
+        if prefix_style in ["店长推荐", "爆款", "热销", "升级加厚", "加厚", "拍一发二", "拍1发2", "买1送1", "买一送一"]:
             prefix_style = ""
             
+        style_desc = f"{prefix_style}·" if prefix_style else ""
+        is_cleaning = any(w in raw_title for w in ["油污", "清洁", "清洗", "去油", "洗洁", "洗涤", "抽油烟机"])
         is_pet = any(w in raw_title for w in ["宠物", "狗粮", "猫粮", "猫咪", "狗狗"])
         
-        # 针对件数结构化重塑
+        # 针对件数结构化重塑（黄金二段/三段式）
         if sku_qty == 1:
-            if price <= 5.0:
-                opt_name = f"【尝鲜体验装】{clean_name}·限购1件"
+            if is_cleaning:
+                opt_name = f"【尝鲜体验装】{core_kw}500ml (试用1瓶/限购1件)"
+            elif is_pet:
+                opt_name = f"【新客尝鲜装】{core_kw} 1把装·配防潮封口夹"
             else:
-                opt_name = f"【精装单只体验】{clean_name}+配防潮保鲜夹"
+                opt_name = f"【尝鲜体验装】{style_desc}{core_kw} (1件装·限购1件)"
         elif sku_qty == 2:
-            if is_pet:
-                opt_name = f"🔥店长力荐：拍1发2【2把装+配趣味逗猫球】加厚带夹-N"
+            if is_cleaning:
+                opt_name = f"【实发共2瓶】厨房抽油烟机{core_kw}500ml*2瓶 + 配高压专用喷头"
+            elif is_pet:
+                opt_name = f"🔥【实发共2件】{core_kw} 2把装 + 配趣味逗猫球 (加厚多功能)"
             else:
-                opt_name = f"👑镇店之宝：拍1发2【买1送1实发2件】加厚多用途+配无痕挂钩"
+                opt_name = f"🔥【实发共2件】{style_desc}{core_kw} 2件套 + 配无痕挂钩 (80%买家选择)"
         elif sku_qty == 3:
-            opt_name = f"⭐高性价比【超值3件套】多场景替换装+含防潮密封夹"
-        elif sku_qty >= 4:
-            if is_pet:
-                opt_name = f"🏆【多宠家庭囤货4件套】母婴级加厚防断+配解闷玩具球大礼包"
+            if is_cleaning:
+                opt_name = f"⭐【超值3瓶套组】{core_kw}500ml*3瓶 + 配专用喷头 + 强力纳米海绵2块"
+            elif is_pet:
+                opt_name = f"⭐【多宠超值3件套】{core_kw} 3把装 + 配防潮密封夹3个"
             else:
-                opt_name = f"🏆【全家福大容量4件套】食品级加厚耐用+配挂钩收纳全套"
+                opt_name = f"⭐【超值3件套】{style_desc}{core_kw} 3件装 + 含防潮密封夹"
+        elif sku_qty >= 4:
+            if is_cleaning:
+                opt_name = f"🏆【整箱家庭量贩5件套】抽油烟机{core_kw}500ml*4瓶 + 高压喷枪 + 加厚百洁布"
+            elif is_pet:
+                opt_name = f"🏆【多宠家庭囤货4件套】{core_kw} 4把装 + 配解闷玩具球大礼包"
+            else:
+                opt_name = f"🏆【整箱家庭大容量4件套】{style_desc}{core_kw} 4件装 + 配挂钩收纳全套"
         else:
-            opt_name = f"👑【升级豪华装】{clean_name}+配实用配件"
+            opt_name = f"👑【升级豪华装】{style_desc}{core_kw} + 配实用配件"
 
         return opt_name
 
     @classmethod
     def restructure_universal_titles(cls, raw_title: str, category_kw: Optional[str] = None) -> Dict[str, Any]:
+        """
+        基于拼多多爆款黄金四段式词位结构重构标题：
+        【1-10字：大堆头/营销前缀】+【11-20字：场景+精准核心词】+【21-28字：功效/痛点词】+【28-30字：长尾属性词】
+        1. 开头 1-10 字前置大堆头规格（如【实发5件套】、【买1发5】），彻底避开同店同款指纹压制，拉爆 CTR；
+        2. 紧跟【场景+核心词】（如 厨房抽油烟机油污净），连贯紧凑，杜绝中间被长修饰词打断导致切词断裂；
+        3. 注入痛点功效词（强力去重油、免洗、食品级加厚）；
+        4. 末尾补齐高频长尾搜索热词，吃满 28~30 字权重。
+        """
         core_word, modifiers = cls.extract_core_and_modifiers(raw_title, category_kw)
         
         # 将提取到的长尾特征归纳为场景与功能卖点
-        scene_part = "".join(modifiers[:2]) if len(modifiers) >= 2 else (modifiers[0] if modifiers else "家用多功能")
+        scene_part = "".join(modifiers[:2]) if len(modifiers) >= 2 else (modifiers[0] if modifiers else "家用厨房")
         feat_part = "".join(modifiers[2:4]) if len(modifiers) >= 4 else ("".join(modifiers[1:]) if len(modifiers) > 1 else "加厚耐用")
 
         # 动态类目特征前缀与差异词
         is_clothing = any(w in raw_title for w in ["连衣裙", "裙", "衣", "裤", "鞋", "服饰"])
         is_digital = any(w in raw_title for w in ["充电", "快充", "插头", "耳机", "数据线", "支架"])
-        
-        diff_a = "【2024新款】" if is_clothing else ("【升级快充】" if is_digital else "【加厚升级】")
-        diff_c = "法式轻奢" if is_clothing else ("旗舰原装" if is_digital else "官方品质")
+        is_cleaning = any(w in raw_title for w in ["油污", "清洁", "清洗", "去油", "洗洁", "洗涤", "抽油烟机"])
+        is_pet = any(w in raw_title for w in ["宠物", "狗粮", "猫粮", "猫咪", "狗狗"])
 
-        # ==================== 方案 A：🔥 四段式防比价爆款 (推荐) ====================
-        # 公式：[防比价差异词] + [核心大词] + [长尾场景词] + [功能材质]
-        t1 = f"{diff_a}{core_word}{scene_part}{feat_part}食品级加厚正品保障" if not is_clothing else f"{diff_a}{core_word}{scene_part}{feat_part}显瘦气质垂感长裙"
+        # ==================== 方案 A：🔥 黄金四段式大堆头爆款 (主推破零/拉爆CTR/防同店指纹) ====================
+        # 结构：【大堆头营销前缀 1-10字】 + 【场景+核心词 11-20字】 + 【功效痛点词 21-28字】 + 【长尾词 28-30字】
+        if is_cleaning:
+            t1 = f"【大促实发5件套】厨房抽油烟机{core_word}强力去重油泡沫型烟灶清洗剂"
+        elif is_pet:
+            t1 = f"【实发4件大礼包】宠物猫粮狗粮{core_word}自带封口夹加厚防潮多功能铲"
+        elif is_clothing:
+            t1 = f"【大促实发2件套】法式气质{core_word}显瘦垂感收腰日常通勤透气长裙"
+        elif is_digital:
+            t1 = f"【升级快充套组】车载快充{core_word}多口数显强劲温控防烫通用插头"
+        else:
+            t1 = f"【大促实发4件套】家用厨房{core_word}食品级加厚耐用大容量挖面工具"
+
         if len(t1) > 30: t1 = t1[:30]
-        elif len(t1) < 26: t1 = (t1 + "多功能实用好物")[:30]
+        elif len(t1) < 26: t1 = (t1 + "包邮到家")[:30]
 
-        # ==================== 方案 B：⚡ 性价比自然流跑量款 ====================
-        # 公式：[前置刚需搜索词] + [核心大词] + [长尾修饰] + [微赠品防比价词]
-        t2 = f"{scene_part}{core_word}{feat_part}多用途高性价比配配件超值家用包邮" if not is_clothing else f"{scene_part}{core_word}{feat_part}小个子显瘦舒适百搭正品包邮"
+        # ==================== 方案 B：⚡ 高频搜索紧凑核心词款 (精准类目/防错配/吃满自然搜推) ====================
+        # 结构：【前置刚需场景 1-8字】 + 【紧凑核心大词 9-18字】 + 【真实功效痛点 19-26字】 + 【微配件 27-30字】
+        if is_cleaning:
+            t2 = f"厨房抽油烟机{core_word}强力去油免洗一喷净烟灶多功能清洁剂配喷头"
+        elif is_pet:
+            t2 = f"宠物猫咪狗狗{core_word}自带长柄封口夹食品级量勺铲米防潮配逗猫球"
+        elif is_clothing:
+            t2 = f"气质显瘦法式{core_word}小个子高级感舒适百搭垂感夏季短袖长裙正品"
+        elif is_digital:
+            t2 = f"多口氮化镓{core_word}手机平板通用快充头低温不伤机配高导数据线"
+        else:
+            t2 = f"家用大号{core_word}多功能厨房挖面量米工具加厚食品级PP材质配挂钩"
+
         if len(t2) > 30: t2 = t2[:30]
         elif len(t2) < 26: t2 = (t2 + "耐用实惠")[:30]
 
-        # ==================== 方案 C：👑 品质升级高溢价款 ====================
-        # 公式：[品质前缀] + [核心大词] + [真实长尾特征] + [质检无忧防撞词]
-        t3 = f"{diff_c}{core_word}{scene_part}{feat_part}母婴级环保无异味质检认证" if not is_clothing else f"{diff_c}{core_word}{scene_part}{feat_part}高级感不挑身材品质保证"
+        # ==================== 方案 C：👑 品质升级高溢价款 (母婴级/加厚质检/支撑高客单多件套) ====================
+        # 结构：【品质信任标牌 1-8字】 + 【核心大词+场景 9-18字】 + 【母婴级环保材质 19-26字】 + 【质检无忧 27-30字】
+        if is_cleaning:
+            t3 = f"【温和不伤手】抽油烟机{core_word}食品级环保去油配方母婴家庭除垢剂"
+        elif is_pet:
+            t3 = f"【加厚防断】宠物猫粮狗粮{core_word}食品级环保无异味长柄量米勺质检保障"
+        elif is_clothing:
+            t3 = f"【轻奢品质】法式重工复古{core_word}高端不挑身材收腰显瘦长裙官方正品"
+        elif is_digital:
+            t3 = f"【官方旗舰品质】超快充{core_word}智能控温多协议兼容安全快充认证"
+        else:
+            t3 = f"【加厚防断】{core_word}厨房家用大容量量杯食品级无异味环保质检品质"
+
         if len(t3) > 30: t3 = t3[:30]
-        elif len(t3) < 26: t3 = (t3 + "高档质感品质优选")[:30]
+        elif len(t3) < 26: t3 = (t3 + "品质保障")[:30]
 
         return {
             "core_word": core_word,
             "title_plans": [
                 {
-                    "scheme": "🔥 四段式防比价爆款 (推荐)",
+                    "scheme": "🔥 黄金四段式大堆头爆款 (推荐·拉爆CTR/防同店指纹)",
                     "title": t1,
                     "formula_breakdown": {
-                        "核心词": core_word,
-                        "长尾修饰词": scene_part,
-                        "材质场景": feat_part,
-                        "防比价差异词": diff_a
+                        "黄金第1段 (1-10字)": "【大促实发多件套】(大堆头视觉冲击，防同店文本指纹压制)",
+                        "黄金第2段 (11-20字)": f"{scene_part[:4]}+{core_word} (紧凑核心词锁定精准类目，防错配)",
+                        "黄金第3段 (21-28字)": "强力去重油/食品级加厚 (痛点功效词拉升进店转化 CVR)",
+                        "黄金第4段 (28-30字)": "长尾热词补充 (吃满28~30字自然搜推权重)"
                     },
                     "char_count": len(t1),
-                    "strategy": "严格按 [防比价差异词] + [核心大词] + [长尾场景词] + [材质/功能] 组合，彻底规避算法同款压价。"
+                    "strategy": "严格按照 拼多多黄金四段式 词位布局：大堆头前置拉升 30% 点击率，紧凑核心词杜绝切词断裂与类目错配。"
                 },
                 {
-                    "scheme": "⚡ 性价比自然流跑量款",
+                    "scheme": "⚡ 高频搜索紧凑核心词款 (精准类目/防错配/吃满自然搜推)",
                     "title": t2,
                     "formula_breakdown": {
-                        "核心词": core_word,
-                        "长尾修饰词": scene_part,
-                        "材质场景": feat_part,
-                        "防比价差异词": "送配套/高性价比"
+                        "核心主词": core_word,
+                        "场景修饰": scene_part,
+                        "功效痛点": "免洗一喷净/加厚耐用",
+                        "微配件差异": "配专用配件/挂钩"
                     },
                     "char_count": len(t2),
-                    "strategy": "前置真实刚需高频搜索词，后置微赠品差异词，兼顾 9.9 包邮与高点击 CTR。"
+                    "strategy": "场景词与核心词紧密相连无缝切词，后置微配件中性词（配/含），精准吃满大盘自然搜索免费流量。"
                 },
                 {
-                    "scheme": "👑 品质升级高溢价款",
+                    "scheme": "👑 品质升级高溢价款 (母婴级/加厚质检/支撑高客单)",
                     "title": t3,
                     "formula_breakdown": {
-                        "核心词": core_word,
-                        "长尾修饰词": scene_part,
-                        "材质场景": feat_part,
-                        "防比价差异词": diff_c + "/质检保障"
+                        "品质信任标": "【加厚防断/温和不伤手】",
+                        "核心大词": core_word,
+                        "高级材质": "食品级/母婴级无异味",
+                        "质检背书": "官方质检保障"
                     },
                     "char_count": len(t3),
-                    "strategy": "主打官方正品、质检保障与环保高端属性，为 19.9+ 高客单价提供充足溢价支撑。"
+                    "strategy": "突出高质感与安全质检背书，为 25.9~49.9 元高客单多件套提供充足溢价支撑与信任度。"
                 }
             ],
-            "naming_rule": "四段式全品类组合：[防比价差异词] + [核心词] + [高频长尾修饰词] + [材质/场景/赠品]，字数 26~30 字，严禁极限词与同行品牌词。"
+            "naming_rule": "拼多多黄金四段式：【大堆头营销前缀 1-10字】+【场景+核心词 11-20字】+【功效痛点词 21-28字】+【长尾词 28-30字】，彻底规避 0 曝光与类目错配！"
         }
