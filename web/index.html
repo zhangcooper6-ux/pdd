@@ -1014,6 +1014,7 @@
               </label>
               <select id="pricingAlgorithmSelect" class="form-input" style="padding: 7px 10px; font-size: 12px; width: 100%; background: #1e293b; color: #f8fafc; border: 1px solid #475569; border-radius: 8px;" onchange="changePricingAlgorithmMode()">
                 <option value="golden" selected>💎 经典黄金 4 阶梯算法 (常规中高溢价/高毛利)</option>
+                <option value="anti_involution_defense">🛡️ 抗全站内卷·高防守稳赚算法 (1.8投产必赚/压低保本ROI)</option>
                 <option value="mid_range_natural_flow">🔥 中低成本黄金自然流 (2~8元/微利卡位+买1送1)</option>
                 <option value="mid_range_high_margin">👑 中低成本高毛利开车 (2~8元/单单留7~12元毛利)</option>
                 <option value="ultra_low_cost">⚡ 极致性价比自然流 (≤2元低价卡位/9.9包邮/破零)</option>
@@ -1501,6 +1502,19 @@
         ],
         budgetGuide: "每日预算建议 50 ~ 100 元，起步测款备用金 300 ~ 500 元。保本 ROI 区间 1.75 ~ 2.20，退款率预估 12%~15%。"
       },
+      anti_involution_defense: {
+        title: "🛡️ 抗全站内卷·高防守稳赚算法 · 玩法 SOP 与预算策略",
+        themeColor: "#06b6d4",
+        badge: "专为全站推广内卷生态打造 (实测 1.8 投产综合必赚)",
+        summary: "彻底打破‘1.8 投产比全店亏损’困局！通过垫厚单件防守毛利、重塑 2件装高感知配件溢价与3件装严格防倒挂（8.9/13.9/16.9/20.9），将全店综合保本 ROI 死死压在 1.68~1.72，即便 100% 全付费买量，开 1.8 投产依然单单稳赚！",
+        sopSteps: [
+          { phase: "1. 防拍卡位与微利筑底 (第1-3天)", desc: "1件装标 8.9 打'尝鲜限购1件'防被刷单空耗；核心主推款标 16.9 元配'送逗猫球+送运费险'，引导 85% 买家买高客单主推。" },
+          { phase: "2. 1.8 极速放量稳赚 (第4-7天)", desc: "全站推广日预算 100~200 元，目标投产比直接设 1.80！此时全店综合保本点仅 1.70，系统狂吃曝光的同时每天净赚 150~300 元！" },
+          { phase: "3. 降维打击与流量锁死 (第8-14天)", desc: "利用多件套的折合单件优势（3件套20.9元，单件仅6.9元不倒挂），转化率拉满并稳固店铺爆款权重榜第一。" },
+          { phase: "4. 拖价放大利润池 (第15天+)", desc: "每天微调目标 ROI 提高 0.05（从 1.8 拖至 2.1~2.3），免费自然搜推爆发，月净利润轻松破万！" }
+        ],
+        budgetGuide: "全站推广日预算 100 ~ 300 元。全店加权真实保本 ROI 仅 1.68 ~ 1.72，广告容错率极高，开 1.8 投产比绝对不亏钱。"
+      },
       mid_range_natural_flow: {
         title: "🔥 2~8元中低成本黄金自然流算法 · 玩法 SOP 与预算策略",
         themeColor: "#f97316",
@@ -1685,6 +1699,10 @@
         badge.className = "badge badge-success";
         if (badgeText !== badge) badgeText.innerText = "💎 经典黄金4阶梯"; else badge.innerText = "💎 经典黄金4阶梯 📖 玩法SOP ℹ️";
         showToast("💎 已切换为【经典黄金 4 阶梯算法】：适合中高溢价常规商品", "success");
+      } else if (currentPricingAlgoMode === 'anti_involution_defense') {
+        badge.className = "badge badge-primary";
+        if (badgeText !== badge) badgeText.innerText = "🛡️ 抗内卷高防守"; else badge.innerText = "🛡️ 抗内卷高防守 📖 玩法SOP ℹ️";
+        showToast("🛡️ 已切换为【抗全站内卷·高防守稳赚算法】：垫厚安全毛利，保本ROI压至1.70以下，1.8投产全付费稳稳盈利！", "success");
       } else if (currentPricingAlgoMode === 'mid_range_natural_flow') {
         badge.className = "badge badge-warning";
         if (badgeText !== badge) badgeText.innerText = "🔥 2~8元黄金自然流"; else badge.innerText = "🔥 2~8元黄金自然流 📖 玩法SOP ℹ️";
@@ -1758,6 +1776,7 @@
       if (showNotice) {
         const algoLabels = {
           'golden': '💎 经典黄金 4 阶梯算法',
+          'anti_involution_defense': '🛡️ 抗全站内卷·高防守稳赚算法',
           'ultra_low_cost': '⚡ 极致性价比自然流算法',
           'marginal_logistics': '📦 边际运费多件套算法'
         };
@@ -1767,7 +1786,9 @@
 
     // 算法调度器
     function dispatchSkuPricingAlgorithm(qty, uCost, skuName, idx) {
-      if (currentPricingAlgoMode === 'mid_range_natural_flow') {
+      if (currentPricingAlgoMode === 'anti_involution_defense') {
+        return calculateAntiInvolutionDefensePricing(qty, uCost, skuName, idx);
+      } else if (currentPricingAlgoMode === 'mid_range_natural_flow') {
         return calculateMidRangeNaturalFlowPricing(qty, uCost, skuName, idx);
       } else if (currentPricingAlgoMode === 'mid_range_high_margin') {
         return calculateMidRangeHighMarginPricing(qty, uCost, skuName, idx);
@@ -1783,6 +1804,63 @@
         return null;
       }
       return calculateGoldenSkuPricing(qty, uCost, skuName, idx);
+    }
+
+    // 核心新增：🛡️ 抗全站内卷·高防守稳赚算法 (彻底攻克1.8投产全付费亏损陷阱)
+    function calculateAntiInvolutionDefensePricing(qty, uCost, skuName, idx) {
+      const express = parseFloat(document.getElementById('calcExpressFee').value) || 1.8;
+      const material = parseFloat(document.getElementById('calcMaterialFee').value) || 0.1;
+      const labor = parseFloat(document.getElementById('calcLaborFee').value) || 0.25;
+      const refund = (parseFloat(document.getElementById('calcRefundRate').value) || 15) / 100;
+      const insurance = parseFloat(document.getElementById('calcInsuranceFee').value) || 0;
+      const commVal = document.getElementById('calcCommissionRate').value;
+      const commission = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
+
+      const fixedPackCost = express + material + labor + insurance;
+      const deductFactor = Math.max(0.1, 1.0 - refund - commission);
+
+      // 1. 引流款 (1件装)：垫厚安全毛利，保本ROI压制到 1.95 附近 (保底 8.9 元防扫货防空耗)
+      if (qty === 1) {
+        const rawAttr = ((uCost * 1 + fixedPackCost) + 1.6) / deductFactor;
+        const attrPrice = Math.max(8.9, Math.round(rawAttr * 10) / 10);
+        return { selling_price: attrPrice, coupon_amount: 1.0 };
+      }
+
+      const hasAccessory = /球|逗猫|玩具|礼包|配件|喷头/i.test(skuName);
+
+      // 2. 2件装：基础款与高感知配件款
+      if (qty === 2) {
+        // 2件基础款：保本ROI压到 1.78，保底 13.9 元 (折合 6.95 元/件)
+        const raw2Base = Math.round((((uCost * 2 + fixedPackCost) + 5.6) / deductFactor) * 10) / 10;
+        const base2Price = Math.max(13.9, raw2Base);
+
+        if (hasAccessory || skuName.includes('店长力荐') || idx === 2) {
+          // 2件+高感知配件 (核心主推承接 80% 付费流量)：
+          // 拼单价 16.9 元 (保本 ROI 直降至 1.70)，配 3 元立减券到手 13.9 元极具吸引力！
+          const heroPrice = Math.round((base2Price + 3.0) * 10) / 10;
+          return { selling_price: Math.max(16.9, heroPrice), coupon_amount: 3.0 };
+        } else {
+          return { selling_price: base2Price, coupon_amount: 2.0 };
+        }
+      } else if (qty === 3) {
+        // 3. 3件装：多买折合单价必须严格单调递减 (P3/3 < P2_base/2)！
+        // 2件基础折合单价为 6.95 元，3件套单价再让利 0.25 元 (折合 6.70 元/件)
+        // 售价定在 20.9 元 (保本 ROI 压制到 1.65，单单贡献 1.06 元超额广告纯利！)
+        const targetUnit3 = Math.max(uCost + 1.4, (13.9 / 2.0) - 0.25);
+        const calcPrice3 = Math.round(targetUnit3 * 3 * 10) / 10;
+        const minCost3 = Math.round((((uCost * 3 + fixedPackCost) + 7.2) / deductFactor) * 10) / 10;
+        return { selling_price: Math.max(minCost3, Math.min(20.9, calcPrice3)), coupon_amount: 3.0 };
+      } else {
+        // 4. 4件及以上高客单收割款：单调递减平滑阶梯，拦截 4.4 倍率红线
+        const prevUnit3 = 20.9 / 3.0; // 6.96
+        const targetUnitQty = Math.max(uCost + 1.2, prevUnit3 - 0.35 - (qty - 4) * 0.15);
+        const ratioPrice = Math.round(targetUnitQty * qty * 10) / 10;
+
+        const minCostQty = Math.round((((uCost * qty + fixedPackCost) + 8.5 + (qty - 4) * 2.5) / deductFactor) * 10) / 10;
+        const maxSafePrice = Math.round(8.9 * 4.4 * 10) / 10;
+        const finalPrice = Math.min(maxSafePrice, Math.max(minCostQty, Math.max(27.9, ratioPrice)));
+        return { selling_price: finalPrice, coupon_amount: Math.min(6.0, 4.0 + (qty - 3) * 1.0) };
+      }
     }
 
     // 算法 A：2~8 元中低成本黄金性价比自然流算法 (保本微利卡位 + 买1送1引爆转化)
