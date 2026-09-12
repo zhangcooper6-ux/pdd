@@ -244,11 +244,14 @@ class PddProductAnalyzer:
         attr_raw = ((base_cost * 1.0 + fixed_pack_cost) + 0.8) / deduct_factor
         golden_attr_price = max(7.9, round(attr_raw + 2.8, 1))
 
-        # 2. 依次推导 2件套基础款、2件套主推加赠款(合理心理溢价+3元，严防倒挂) 及 3件装大堆头
+        # 2. 依次推导 2件套基础款、2件套主推加赠款(合理心理溢价+3元) 及 3件装大堆头(严格低于2件套折合单价)
         sku1_price = golden_attr_price # 7.9元
         hero_base_price = max(12.9, round((((base_cost * 2.0 + fixed_pack_cost) + 4.8) / deduct_factor), 1))
         sku2_price = round(hero_base_price + 3.0, 1) # 15.9元 (比2件基础款仅加3元获高感知赠品，主推走量)
-        sku3_price = min(round(golden_attr_price * 3 * 0.92, 1), 22.9) # 21.9元 (折合单件严格低于单买，绝不倒挂)
+        
+        # 3件装单件折合售价必须低于2件基础款单价(hero_base_price / 2.0 = 6.45元/件)
+        unit2_base = hero_base_price / 2.0
+        sku3_price = min(round((unit2_base - 0.25) * 3, 1), 18.9) # 18.9元 (折合 6.30元/件，严格单调递减，绝不倒挂)
 
         if profit_mode == "free_traffic":
             ad_strategy = "自然流为主：依靠【新客立减】+【拼单返现】+大额商品券破零，不长期开付费，前3天小额测款。"
