@@ -615,6 +615,9 @@
       <button class="tab-nav-btn" id="tabBtnPricing" onclick="switchMainTab('pricing')">
         🧮 智能算价与投产模拟器
       </button>
+      <button class="tab-nav-btn" id="tabBtnTargetMargin" onclick="switchMainTab('target_margin')">
+        🎯 目标毛利反算与测价测款
+      </button>
       <button class="tab-nav-btn" id="tabBtnOmni" onclick="switchMainTab('omni')">
         🌐 四平台全域大盘
       </button>
@@ -1261,6 +1264,230 @@
 
     </div>
 
+    <!-- ==================== TAB 2B: 目标毛利率反算与测价测款工作台 (全新独立版本) ==================== -->
+    <div id="targetMarginSection" style="display: none; flex-direction: column; gap: 24px;">
+
+      <!-- 顶部功能横幅说明 -->
+      <div class="card" style="background: linear-gradient(135deg, #091e3a 0%, #1e1b4b 100%); border: 1px solid #38bdf8; padding: 18px 22px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: bold; color: #38bdf8;">
+              <span>🎯 目标毛利反算与测价测款工作台 (Target Margin Pricing Engine)</span>
+              <span class="badge" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8;">多规格等毛利严控模型</span>
+            </div>
+            <div style="font-size: 12.5px; color: #94a3b8; margin-top: 4px; line-height: 1.5;">
+              根据您统一设定的<strong>目标毛利率 (如 40%、50%、60%)</strong> 与单件成本，结合履约固定硬成本与平台扣点，<strong>精准倒算每个规格的科学拼单售价</strong>。
+              支持一键横向 3 档毛利方案对比，并自带买家比价防倒挂与全站推广保本 ROI 实时推演！
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-outline" style="font-size: 12px; border-color: #38bdf8; color: #38bdf8;" onclick="loadPresetMarginSkus()">🔄 载入对标测试品货盘</button>
+            <button class="btn btn-primary" style="font-size: 12px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none;" onclick="runTargetMarginBatchCalc()">⚡ 全盘一键反算售价</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 左右响应式工作台容器 -->
+      <div class="pricing-workbench-container">
+
+        <!-- 左侧固定控制台：核心目标毛利率快捷设定 + 履约参数 -->
+        <div class="pricing-sidebar-sticky">
+
+          <!-- 1. 核心目标毛利率控制面板 -->
+          <div class="card" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border: 1px solid #0284c7; padding: 18px;">
+            <div class="card-header" style="margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(56, 189, 248, 0.25);">
+              <div class="card-title" style="font-size: 14px;">
+                <div class="card-title-icon" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8;">🎯</div>
+                <span>统一目标毛利率设定</span>
+              </div>
+            </div>
+
+            <!-- 快捷毛利率档位切换按钮组 -->
+            <div style="margin-bottom: 14px;">
+              <label class="form-label" style="font-size: 11.5px; color: #cbd5e1; margin-bottom: 6px;">
+                <span>⚡ 常用测价毛利率快捷预设：</span>
+              </label>
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px;">
+                <button type="button" class="btn btn-outline tm-preset-btn" style="padding: 5px 2px; font-size: 11.5px; justify-content: center;" onclick="setGlobalTargetMargin(0.30)">30%</button>
+                <button type="button" class="btn btn-outline tm-preset-btn" style="padding: 5px 2px; font-size: 11.5px; justify-content: center;" onclick="setGlobalTargetMargin(0.40)">40%</button>
+                <button type="button" class="btn btn-outline tm-preset-btn active" id="btnMargin50" style="padding: 5px 2px; font-size: 11.5px; justify-content: center; background: rgba(56,189,248,0.2); border-color: #38bdf8; color: #38bdf8; font-weight: bold;" onclick="setGlobalTargetMargin(0.50)">50%</button>
+                <button type="button" class="btn btn-outline tm-preset-btn" style="padding: 5px 2px; font-size: 11.5px; justify-content: center;" onclick="setGlobalTargetMargin(0.60)">60%</button>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11.5px; color: #94a3b8;">自定义目标毛利率 (%)：</label>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <input type="number" class="form-input" id="tmGlobalMarginRate" value="50" step="1" min="5" max="95" style="padding: 6px 10px; font-size: 14px; font-weight: bold; color: #38bdf8;" oninput="onTmGlobalMarginChange()">
+                  <span style="font-size: 14px; color: #cbd5e1; font-weight: bold;">%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 履约参数网格 (2列紧凑排布) -->
+            <div style="font-size: 12px; font-weight: bold; color: #94a3b8; margin: 12px 0 6px 0; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px;">📦 履约硬成本与损耗参数：</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">基础快递(元)：</label>
+                <input type="number" class="form-input" id="tmExpressFee" value="1.80" step="0.1" style="padding: 4px 6px; font-size: 11.5px;" onchange="runTargetMarginBatchCalc()">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">包装耗材(元)：</label>
+                <input type="number" class="form-input" id="tmMaterialFee" value="0.10" step="0.05" style="padding: 4px 6px; font-size: 11.5px;" onchange="runTargetMarginBatchCalc()">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">人工打包(元)：</label>
+                <input type="number" class="form-input" id="tmLaborFee" value="0.25" step="0.05" style="padding: 4px 6px; font-size: 11.5px;" onchange="runTargetMarginBatchCalc()">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">预期退款率(%)：</label>
+                <input type="number" class="form-input" id="tmRefundRate" value="15" step="1" style="padding: 4px 6px; font-size: 11.5px;" onchange="runTargetMarginBatchCalc()">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">运费险损耗(元)：</label>
+                <input type="number" class="form-input" id="tmInsuranceFee" value="0.00" step="0.1" style="padding: 4px 6px; font-size: 11.5px;" onchange="runTargetMarginBatchCalc()">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">平台扣点(%)：</label>
+                <input type="number" class="form-input" id="tmCommissionRate" value="0.6" step="0.1" style="padding: 4px 6px; font-size: 11.5px;" onchange="runTargetMarginBatchCalc()">
+              </div>
+            </div>
+
+            <!-- 测算投放投产比 ROAS 设定 -->
+            <div class="form-group" style="margin-top: 10px; margin-bottom: 0;">
+              <label class="form-label">全站推广测算投产比 (Target ROAS)：</label>
+              <input type="number" class="form-input" id="tmTargetRoas" value="1.8" step="0.1" style="padding: 4px 8px; font-size: 11.5px;" onchange="runTargetMarginBatchCalc()">
+            </div>
+          </div>
+
+          <!-- 2. 反算数学公式与比价心智卡片 -->
+          <div class="card" style="border-color: rgba(56, 189, 248, 0.4); padding: 14px; background: #0b1324;">
+            <div style="font-size: 12.5px; font-weight: bold; color: #38bdf8; margin-bottom: 6px;">📐 目标毛利严谨反算公式</div>
+            <div style="font-size: 11px; color: #cbd5e1; line-height: 1.6; font-family: monospace; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px;">
+              售价 P = (货本 + 固定履约) / (1 - 预期退款率 - 平台扣点 - 目标毛利率)<br/>
+              保本 ROI = 1 / 目标毛利率
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
+              💡 当设定 50% 毛利率时，真实保本 ROI 正好为 <strong>2.00</strong>；设定 60% 时，保本 ROI 为 <strong>1.67</strong>（开 1.8 投产稳赚）。
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 右侧主工作区：目标毛利反算矩阵大盘 + 3 档对比测算大盘 -->
+        <div class="pricing-main-workspace">
+
+          <!-- 批量多 SKU 目标毛利反算售价表 -->
+          <div class="card" style="margin-bottom: 0;">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="card-title-icon">📊</div>
+                <span>多规格目标毛利率反算售价矩阵大盘</span>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <button class="btn btn-outline" style="font-size: 12px;" onclick="addTmSkuRow()">➕ 添加 SKU 规格</button>
+              </div>
+            </div>
+
+            <!-- 价格阶梯防倒挂与健全性智能诊断卡片 -->
+            <div id="tmSanityAlertContainer" style="margin-bottom: 12px;"></div>
+
+            <div class="table-responsive">
+              <table id="tmBatchPricingTable">
+                <thead>
+                  <tr>
+                    <th>SKU名称</th>
+                    <th>件数</th>
+                    <th>单件成本(元)</th>
+                    <th style="color:#38bdf8; background:rgba(56, 189, 248, 0.12);">指定毛利率</th>
+                    <th style="color:#34d399; background:rgba(52, 211, 153, 0.12); font-weight:bold;">反算拼单售价(元)</th>
+                    <th style="color:#38bdf8; background:rgba(56, 189, 248, 0.08);">折合单件(元)</th>
+                    <th style="color:#fbbf24; background:rgba(251, 191, 36, 0.08);">阶梯防倒挂诊断</th>
+                    <th>立减券(元)</th>
+                    <th>5+7虚高原价</th>
+                    <th>券后到手价</th>
+                    <th>预估单量</th>
+                    <th>实际单单毛利</th>
+                    <th>保本 ROI</th>
+                    <th style="color:#34d399;">投产每单广告费</th>
+                    <th style="color:#38bdf8;">每单纯利润</th>
+                    <th>日预计净利</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="tmBatchPricingTableBody">
+                  <!-- JS 动态渲染 -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 底部全店盈利汇总看板 -->
+            <div style="background: #0b1329; border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; padding: 14px 18px; margin-top: 14px;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; text-align: center;">
+                <div>
+                  <span style="font-size: 11px; color: #94a3b8;">全店日预估单量:</span>
+                  <strong style="display: block; font-size: 17px; color: #f8fafc; margin-top: 2px;" id="tmSumDailyOrders">0</strong>
+                </div>
+                <div>
+                  <span style="font-size: 11px; color: #94a3b8;">综合保本 ROI:</span>
+                  <strong style="display: block; font-size: 17px; color: #fbbf24; margin-top: 2px;" id="tmSumBreakevenRoi">0.00</strong>
+                </div>
+                <div>
+                  <span style="font-size: 11px; color: #94a3b8;">全店日营业额:</span>
+                  <strong style="display: block; font-size: 17px; color: #38bdf8; margin-top: 2px;" id="tmSumDailyRev">¥0.00</strong>
+                </div>
+                <div>
+                  <span style="font-size: 11px; color: #94a3b8;">全店日广告消耗:</span>
+                  <strong style="display: block; font-size: 17px; color: #f87171; margin-top: 2px;" id="tmSumDailyAd">¥0.00</strong>
+                </div>
+                <div>
+                  <span style="font-size: 11px; color: #94a3b8;">预计日净利润 (投产测算):</span>
+                  <strong style="display: block; font-size: 18px; color: #34d399; margin-top: 2px;" id="tmSumDailyNetProfit">¥0.00</strong>
+                </div>
+                <div>
+                  <span style="font-size: 11px; color: #94a3b8;">预计月净利润:</span>
+                  <strong style="display: block; font-size: 18px; color: #a855f7; margin-top: 2px;" id="tmSumMonthlyNetProfit">¥0.00</strong>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- 3 档目标毛利率横向测价与测款矩阵对比卡片 -->
+          <div class="card" style="margin-top: 18px; background: linear-gradient(135deg, #091224 0%, #151d38 100%); border: 1px solid rgba(99, 102, 241, 0.3);">
+            <div class="card-header" style="margin-bottom: 8px;">
+              <div class="card-title" style="font-size: 13.5px; color: #a5b4fc;">
+                <span>⚖️ 3 档核心毛利率 (40% vs 50% vs 60%) 横向定价矩阵对比与测款选型</span>
+              </div>
+            </div>
+            <p style="font-size: 11.5px; color: #94a3b8; margin-bottom: 12px;">
+              为您自动横向对比在 <strong>低毛利冲量 (40%)</strong>、<strong>均衡稳健 (50%)</strong>、<strong>高毛利强付费 (60%)</strong> 三种策略下的售价分布与投产安全垫，帮助您秒定上架售价！
+            </p>
+
+            <div class="table-responsive">
+              <table style="font-size: 12px;">
+                <thead>
+                  <tr style="background: rgba(15, 23, 42, 0.8);">
+                    <th>SKU 规格名称</th>
+                    <th>件数</th>
+                    <th style="color:#38bdf8; background:rgba(56, 189, 248, 0.1);">40% 毛利 (保本ROI 2.50)</th>
+                    <th style="color:#34d399; background:rgba(52, 211, 153, 0.1);">50% 毛利 (保本ROI 2.00)</th>
+                    <th style="color:#a855f7; background:rgba(168, 85, 247, 0.1);">60% 毛利 (保本ROI 1.67)</th>
+                    <th>测款选型建议</th>
+                  </tr>
+                </thead>
+                <tbody id="tmComparisonTableBody">
+                  <!-- JS 动态渲染 -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
     <!-- ==================== TAB 3: 全域四平台看板 (天猫/京东/抖音/拼多多) ==================== -->
     <div id="omniSection" style="display: none; flex-direction: column; gap: 24px;">
 
@@ -1448,21 +1675,25 @@
     function switchMainTab(tab) {
       const pddSec = document.getElementById('pddSection');
       const pricingSec = document.getElementById('pricingSection');
+      const targetMarginSec = document.getElementById('targetMarginSection');
       const omniSec = document.getElementById('omniSection');
       const readmeSec = document.getElementById('readmeSection');
 
       const pddBtn = document.getElementById('tabBtnPdd');
       const pricingBtn = document.getElementById('tabBtnPricing');
+      const targetMarginBtn = document.getElementById('tabBtnTargetMargin');
       const omniBtn = document.getElementById('tabBtnOmni');
       const readmeBtn = document.getElementById('tabBtnReadme');
 
       pddSec.style.display = 'none';
       pricingSec.style.display = 'none';
+      if (targetMarginSec) targetMarginSec.style.display = 'none';
       omniSec.style.display = 'none';
       if (readmeSec) readmeSec.style.display = 'none';
 
       pddBtn.classList.remove('active');
       pricingBtn.classList.remove('active');
+      if (targetMarginBtn) targetMarginBtn.classList.remove('active');
       omniBtn.classList.remove('active');
       if (readmeBtn) readmeBtn.classList.remove('active');
 
@@ -1474,6 +1705,10 @@
         pricingBtn.classList.add('active');
         initDefaultBatchTable();
         runSinglePricingCalc();
+      } else if (tab === 'target_margin') {
+        if (targetMarginSec) targetMarginSec.style.display = 'flex';
+        if (targetMarginBtn) targetMarginBtn.classList.add('active');
+        initTargetMarginTable();
       } else if (tab === 'readme') {
         if (readmeSec) readmeSec.style.display = 'flex';
         if (readmeBtn) readmeBtn.classList.add('active');
@@ -2701,6 +2936,339 @@
           alertContainer.innerHTML = `<div style="padding:7px 12px; background:rgba(52, 211, 153, 0.08); border-left:4px solid #34d399; border-radius:6px; font-size:11.5px; color:#6ee7b7; display:flex; align-items:center; gap:6px;"><span>✅ 价格逻辑健全：全店 SKU 价格阶梯单调健康，折合单件严格递减，买家比价心理学检验 100% 通过！</span></div>`;
         }
       }
+    }
+
+    // ==================== TAB 2B: 目标毛利率反算与测价测款核心逻辑 ====================
+    let tmSkusList = [
+      { sku_name: '【尝鲜体验】单只装·食品级加厚', sku_qty: 1, unit_cost: 0.94, margin_rate: null, daily_orders: 160 },
+      { sku_name: '【实发2把】家庭替换装 (多买优惠)', sku_qty: 2, unit_cost: 0.94, margin_rate: null, daily_orders: 80 },
+      { sku_name: '👑【店长力荐/实发3件】2把+配趣味逗猫球', sku_qty: 2, unit_cost: 1.24, margin_rate: null, daily_orders: 210 },
+      { sku_name: '⭐【超值囤货】多功能量勺3把装', sku_qty: 3, unit_cost: 0.94, margin_rate: null, daily_orders: 35 },
+      { sku_name: '🏆【全家福囤货4件套】加厚勺2把+量勺+解闷球', sku_qty: 4, unit_cost: 1.05, margin_rate: null, daily_orders: 15 }
+    ];
+
+    function initTargetMarginTable() {
+      runTargetMarginBatchCalc();
+    }
+
+    function setGlobalTargetMargin(rateVal) {
+      const pct = Math.round(rateVal * 100);
+      document.getElementById('tmGlobalMarginRate').value = pct;
+      
+      // 更新快捷按钮样式
+      document.querySelectorAll('.tm-preset-btn').forEach(b => {
+        b.classList.remove('active');
+        b.style.background = '';
+        b.style.borderColor = '';
+        b.style.color = '';
+        b.style.fontWeight = '';
+      });
+
+      const clickedBtn = Array.from(document.querySelectorAll('.tm-preset-btn')).find(b => b.innerText.trim() === `${pct}%`);
+      if (clickedBtn) {
+        clickedBtn.classList.add('active');
+        clickedBtn.style.background = 'rgba(56,189,248,0.2)';
+        clickedBtn.style.borderColor = '#38bdf8';
+        clickedBtn.style.color = '#38bdf8';
+        clickedBtn.style.fontWeight = 'bold';
+      }
+
+      runTargetMarginBatchCalc();
+    }
+
+    function onTmGlobalMarginChange() {
+      runTargetMarginBatchCalc();
+    }
+
+    function addTmSkuRow() {
+      const baseCost = tmSkusList.length > 0 ? tmSkusList[0].unit_cost : 0.94;
+      tmSkusList.push({
+        sku_name: `新规格套餐 ${tmSkusList.length + 1}`,
+        sku_qty: tmSkusList.length + 1,
+        unit_cost: baseCost,
+        margin_rate: null,
+        daily_orders: 30
+      });
+      runTargetMarginBatchCalc();
+    }
+
+    function removeTmSku(idx) {
+      if (tmSkusList.length <= 1) {
+        showToast("至少保留一个 SKU 规格！", "warning");
+        return;
+      }
+      tmSkusList.splice(idx, 1);
+      runTargetMarginBatchCalc();
+    }
+
+    function loadPresetMarginSkus() {
+      // 优先从 Tab 1 拆解出的 SKU 同步，否则使用高质量通用对标品
+      if (batchSkusList && batchSkusList.length > 0) {
+        tmSkusList = batchSkusList.map(s => ({
+          sku_name: s.sku_name,
+          sku_qty: Number(s.sku_qty) || 1,
+          unit_cost: Number(s.unit_cost) || 0.94,
+          margin_rate: null,
+          daily_orders: Number(s.daily_orders) || 50
+        }));
+      } else {
+        tmSkusList = [
+          { sku_name: '【尝鲜单只装】食品级加厚猫粮狗粮勺·自带封口夹', sku_qty: 1, unit_cost: 0.94, margin_rate: null, daily_orders: 160 },
+          { sku_name: '【实发共2把】带夹猫粮狗粮勺*2把 (多宠替换更实惠)', sku_qty: 2, unit_cost: 0.94, margin_rate: null, daily_orders: 80 },
+          { sku_name: '👑【店长力荐/实发共3件】带夹猫粮勺2把+配趣味逗猫球', sku_qty: 2, unit_cost: 1.24, margin_rate: null, daily_orders: 210 },
+          { sku_name: '⭐【多宠超值3件套】大容量猫粮狗粮勺3把+配防潮密封夹', sku_qty: 3, unit_cost: 0.94, margin_rate: null, daily_orders: 35 },
+          { sku_name: '🏆【全家福囤货4件套】加厚猫狗粮勺2把+多功能量勺+解闷球', sku_qty: 4, unit_cost: 1.05, margin_rate: null, daily_orders: 15 }
+        ];
+      }
+      showToast("已成功载入货盘数据！");
+      runTargetMarginBatchCalc();
+    }
+
+    function updateTmSku(idx, field, val) {
+      if (!tmSkusList[idx]) return;
+      if (field === 'sku_qty') {
+        tmSkusList[idx][field] = parseInt(val) || 1;
+      } else if (field === 'unit_cost') {
+        tmSkusList[idx][field] = parseFloat(val) || 0;
+      } else if (field === 'daily_orders') {
+        tmSkusList[idx][field] = parseInt(val) || 0;
+      } else if (field === 'margin_rate') {
+        const p = parseFloat(val);
+        tmSkusList[idx][field] = !isNaN(p) && p > 0 ? (p / 100) : null;
+      } else {
+        tmSkusList[idx][field] = val;
+      }
+      runTargetMarginBatchCalc();
+    }
+
+    // 核心反算引擎：根据目标毛利率 M 计算科学售价
+    function calculateSellingPriceFromMargin(goodsCost, fixedPackCost, targetMarginRate, refundRate, commissionRate) {
+      // 公式: 售价 P = (货本 + 固定履约) / (1 - 退款率 - 扣点 - 目标毛利率)
+      const denominator = 1.0 - refundRate - commissionRate - targetMarginRate;
+      if (denominator <= 0.05) {
+        return Math.round(((goodsCost + fixedPackCost) / 0.05) * 10) / 10;
+      }
+      const rawPrice = (goodsCost + fixedPackCost) / denominator;
+      return Math.max(1.0, Math.round(rawPrice * 10) / 10);
+    }
+
+    // 目标毛利率全盘批量测算与渲染
+    function runTargetMarginBatchCalc() {
+      const globalMarginVal = parseFloat(document.getElementById('tmGlobalMarginRate').value);
+      const globalMarginRate = (!isNaN(globalMarginVal) ? globalMarginVal : 50) / 100;
+
+      const express = parseFloat(document.getElementById('tmExpressFee').value) || 1.8;
+      const material = parseFloat(document.getElementById('tmMaterialFee').value) || 0.1;
+      const labor = parseFloat(document.getElementById('tmLaborFee').value) || 0.25;
+      const refund = (parseFloat(document.getElementById('tmRefundRate').value) || 15) / 100;
+      const insurance = parseFloat(document.getElementById('tmInsuranceFee').value) || 0.0;
+      const commVal = document.getElementById('tmCommissionRate').value;
+      const commission = (commVal !== '' ? parseFloat(commVal) : 0.6) / 100;
+
+      const targetRoasVal = parseFloat(document.getElementById('tmTargetRoas').value);
+      const targetRoas = (!isNaN(targetRoasVal) && targetRoasVal > 0) ? targetRoasVal : 1.8;
+
+      const fixedPackCost = express + material + labor + insurance;
+
+      const tbody = document.getElementById('tmBatchPricingTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      const formatPrice = (num) => {
+        const val = Number(num) || 0;
+        const str = val.toFixed(3);
+        return str.endsWith('0') ? val.toFixed(2) : str;
+      };
+
+      let totalOrders = 0;
+      let totalRev = 0;
+      let totalAd = 0;
+      let totalNetProfit = 0;
+      let totalGrossProfit = 0;
+
+      const calculatedList = [];
+
+      tmSkusList.forEach((s, idx) => {
+        const qty = Number(s.sku_qty) || 1;
+        const uCost = Number(s.unit_cost) || 0;
+        const goodsCost = uCost * qty;
+        const targetMargin = (s.margin_rate !== null && s.margin_rate !== undefined) ? Number(s.margin_rate) : globalMarginRate;
+
+        // 反算出的精确拼单售价
+        const sellingPrice = calculateSellingPriceFromMargin(goodsCost, fixedPackCost, targetMargin, refund, commission);
+        const unitSellingPrice = sellingPrice / qty;
+
+        // 真实扣除退款与平台扣点后的每单毛利
+        const refundLoss = sellingPrice * refund;
+        const commissionFee = sellingPrice * commission;
+        const actualGrossProfit = sellingPrice - fixedPackCost - goodsCost - refundLoss - commissionFee;
+        const actualMarginRate = sellingPrice > 0 ? (actualGrossProfit / sellingPrice) : 0;
+
+        // 保本 ROI = 1 / 毛利率
+        const breakevenRoi = actualGrossProfit > 0 ? (sellingPrice / actualGrossProfit) : 99.0;
+
+        // 全站推广每单扣费与纯利润 (按设定 Target ROAS)
+        const adSpendPerOrder = sellingPrice / targetRoas;
+        const netProfitPerOrder = actualGrossProfit - adSpendPerOrder;
+        const dailyNetProfit = netProfitPerOrder * (Number(s.daily_orders) || 0);
+
+        // 营销原价与到手价
+        let coupon = 2.0;
+        if (qty === 1) coupon = 1.0;
+        else if (qty === 2) coupon = 3.0;
+        else if (qty >= 3) coupon = 4.0;
+
+        const inflatedPrice = Math.round((sellingPrice / 0.70 + 7.0) * 10) / 10;
+        const reflowPrice = Math.max(0.01, Math.round((sellingPrice - coupon) * 10) / 10);
+
+        totalOrders += (Number(s.daily_orders) || 0);
+        totalRev += sellingPrice * (Number(s.daily_orders) || 0);
+        totalAd += adSpendPerOrder * (Number(s.daily_orders) || 0);
+        totalNetProfit += dailyNetProfit;
+        totalGrossProfit += actualGrossProfit * (Number(s.daily_orders) || 0);
+
+        calculatedList.push({
+          ...s,
+          sellingPrice,
+          unitSellingPrice,
+          actualGrossProfit,
+          actualMarginRate,
+          breakevenRoi,
+          adSpendPerOrder,
+          netProfitPerOrder,
+          dailyNetProfit,
+          coupon,
+          inflatedPrice,
+          reflowPrice
+        });
+      });
+
+      // 诊断阶梯防倒挂与比价心理学
+      const alerts = [];
+      const sanityTags = [];
+
+      for (let i = 0; i < calculatedList.length; i++) {
+        const cur = calculatedList[i];
+        let tag = `<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:10.5px; background:rgba(52,211,153,0.15); color:#34d399; font-weight:bold;">✔ 阶梯健康</span>`;
+        
+        const isExternalGift = /逗猫球|解闷球|玩具球|大礼包|喷枪|无痕挂钩|海绵擦/i.test(cur.sku_name);
+
+        for (let p = 0; p < i; p++) {
+          const prev = calculatedList[p];
+          if (cur.sku_qty > prev.sku_qty && cur.unitSellingPrice > prev.unitSellingPrice + 0.1) {
+            const diff = cur.unitSellingPrice - prev.unitSellingPrice;
+            if (isExternalGift && diff <= 1.2) {
+              tag = `<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:10.5px; background:rgba(251,191,36,0.15); color:#fbbf24; font-weight:bold;">👑 高感知加配</span>`;
+            } else {
+              tag = `<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:10.5px; background:rgba(239,68,68,0.2); color:#f87171; font-weight:bold;">⚠️ 单价倒挂</span>`;
+              alerts.push(`严重单价倒挂！第 ${i+1} 行【${cur.sku_name}】(${cur.sku_qty}件/折合 ¥${cur.unitSellingPrice.toFixed(2)}/件) 高于第 ${p+1} 行 (折合 ¥${prev.unitSellingPrice.toFixed(2)}/件)，买多反而更贵！`);
+            }
+          }
+        }
+        sanityTags.push(tag);
+      }
+
+      // 渲染主表格
+      calculatedList.forEach((s, idx) => {
+        const tr = document.createElement('tr');
+        const marginPct = ((s.actualMarginRate) * 100).toFixed(1);
+        const netColor = s.netProfitPerOrder >= 0 ? '#34d399' : '#f87171';
+        const customMarginDisplay = s.margin_rate !== null ? (s.margin_rate * 100).toFixed(0) : '';
+
+        tr.innerHTML = `
+          <td><input type="text" class="form-input" style="padding:3px 6px; font-size:11.5px; width:135px;" value="${s.sku_name}" onchange="updateTmSku(${idx}, 'sku_name', this.value)"></td>
+          <td><input type="number" class="form-input" style="padding:3px 4px; font-size:11.5px; width:44px;" value="${s.sku_qty}" onchange="updateTmSku(${idx}, 'sku_qty', parseInt(this.value))"></td>
+          <td><input type="number" class="form-input" style="padding:3px 4px; font-size:11.5px; width:52px;" value="${s.unit_cost}" step="0.1" onchange="updateTmSku(${idx}, 'unit_cost', parseFloat(this.value))"></td>
+          <td><input type="number" class="form-input" style="padding:3px 4px; font-size:11.5px; width:52px; color:#38bdf8; font-weight:bold;" placeholder="${(globalMarginRate*100).toFixed(0)}%" value="${customMarginDisplay}" step="5" min="5" max="90" onchange="updateTmSku(${idx}, 'margin_rate', this.value)"></td>
+          <td style="color:#34d399; font-weight:bold; font-size:13px;">¥${formatPrice(s.sellingPrice)}</td>
+          <td style="color:#38bdf8; font-weight:bold; font-size:11px;">¥${formatPrice(s.unitSellingPrice)}/件</td>
+          <td>${sanityTags[idx]}</td>
+          <td>¥${formatPrice(s.coupon)}</td>
+          <td style="color:#f87171; font-weight:bold;">¥${formatPrice(s.inflatedPrice)}</td>
+          <td style="color:#34d399; font-weight:bold;">¥${formatPrice(s.reflowPrice)}</td>
+          <td><input type="number" class="form-input" style="padding:3px 4px; font-size:11.5px; width:50px;" value="${s.daily_orders}" onchange="updateTmSku(${idx}, 'daily_orders', parseInt(this.value))"></td>
+          <td style="color:#34d399; font-weight:bold;">¥${formatPrice(s.actualGrossProfit)} (${marginPct}%)</td>
+          <td style="color:#fbbf24; font-weight:bold;">${formatPrice(s.breakevenRoi)}</td>
+          <td style="color:#94a3b8;">¥${formatPrice(s.adSpendPerOrder)}</td>
+          <td style="color:${netColor}; font-weight:bold;">¥${formatPrice(s.netProfitPerOrder)}</td>
+          <td style="color:${s.dailyNetProfit >= 0 ? '#34d399' : '#f87171'}; font-weight:bold;">¥${formatPrice(s.dailyNetProfit)}</td>
+          <td><button class="btn btn-outline" style="padding:2px 5px; font-size:10.5px; color:#ef4444; border-color:#ef4444;" onclick="removeTmSku(${idx})">删除</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // 诊断看板更新
+      const alertContainer = document.getElementById('tmSanityAlertContainer');
+      if (alertContainer) {
+        if (alerts.length > 0) {
+          alertContainer.innerHTML = alerts.map(msg => 
+            `<div style="padding:7px 12px; margin-bottom:4px; background:rgba(239, 68, 68, 0.15); border-left:4px solid #ef4444; border-radius:6px; font-size:11.5px; color:#fca5a5; display:flex; align-items:center; gap:6px;"><span>${msg}</span></div>`
+          ).join('');
+        } else {
+          alertContainer.innerHTML = `<div style="padding:7px 12px; background:rgba(52, 211, 153, 0.08); border-left:4px solid #34d399; border-radius:6px; font-size:11.5px; color:#6ee7b7; display:flex; align-items:center; gap:6px;"><span>✅ 目标毛利严控合格：所有规格按严格等毛利倒算，全店 SKU 折合单件单调递减，买家比价心理学检验 100% 通过！</span></div>`;
+        }
+      }
+
+      // 汇总数据
+      const weightedBreakevenRoi = totalGrossProfit > 0 ? (totalRev / totalGrossProfit) : 99.0;
+      document.getElementById('tmSumDailyOrders').innerText = totalOrders;
+      document.getElementById('tmSumBreakevenRoi').innerText = weightedBreakevenRoi.toFixed(2);
+      document.getElementById('tmSumDailyRev').innerText = '¥' + totalRev.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+      document.getElementById('tmSumDailyAd').innerText = '¥' + totalAd.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+      
+      const netElem = document.getElementById('tmSumDailyNetProfit');
+      netElem.innerText = '¥' + totalNetProfit.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+      netElem.style.color = totalNetProfit >= 0 ? '#34d399' : '#f87171';
+
+      const monthNetElem = document.getElementById('tmSumMonthlyNetProfit');
+      const monthNet = totalNetProfit * 30;
+      monthNetElem.innerText = '¥' + monthNet.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+      monthNetElem.style.color = monthNet >= 0 ? '#a855f7' : '#f87171';
+
+      // 渲染 3 档毛利率 (40% vs 50% vs 60%) 横向测算对比卡片
+      renderTmComparisonTable(express, material, labor, refund, insurance, commission, fixedPackCost);
+    }
+
+    function renderTmComparisonTable(express, material, labor, refund, insurance, commission, fixedPackCost) {
+      const compBody = document.getElementById('tmComparisonTableBody');
+      if (!compBody) return;
+      compBody.innerHTML = '';
+
+      const formatPrice = (num) => {
+        const val = Number(num) || 0;
+        const str = val.toFixed(3);
+        return str.endsWith('0') ? val.toFixed(2) : str;
+      };
+
+      tmSkusList.forEach((s, idx) => {
+        const qty = Number(s.sku_qty) || 1;
+        const uCost = Number(s.unit_cost) || 0;
+        const goodsCost = uCost * qty;
+
+        const p40 = calculateSellingPriceFromMargin(goodsCost, fixedPackCost, 0.40, refund, commission);
+        const p50 = calculateSellingPriceFromMargin(goodsCost, fixedPackCost, 0.50, refund, commission);
+        const p60 = calculateSellingPriceFromMargin(goodsCost, fixedPackCost, 0.60, refund, commission);
+
+        let suggestion = '';
+        if (qty === 1) {
+          suggestion = '<span style="color:#38bdf8;">引流尝鲜位：建议选 40% 或 50% 压低前端门槛抢点击</span>';
+        } else if (qty === 2) {
+          suggestion = '<span style="color:#34d399; font-weight:bold;">核心主推位：推荐 50%~60% 留足8~10元毛利强吃全站流量</span>';
+        } else {
+          suggestion = '<span style="color:#a855f7;">高客单利润位：推荐 60% 定价，承接大堆头买家做大产值</span>';
+        }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="font-weight:600; color:#f1f5f9;">${s.sku_name}</td>
+          <td>${qty} 件</td>
+          <td style="color:#38bdf8; font-weight:bold;">¥${formatPrice(p40)} <span style="font-size:10px; color:#94a3b8;">(折合¥${formatPrice(p40/qty)}/件)</span></td>
+          <td style="color:#34d399; font-weight:bold;">¥${formatPrice(p50)} <span style="font-size:10px; color:#94a3b8;">(折合¥${formatPrice(p50/qty)}/件)</span></td>
+          <td style="color:#a855f7; font-weight:bold;">¥${formatPrice(p60)} <span style="font-size:10px; color:#94a3b8;">(折合¥${formatPrice(p60/qty)}/件)</span></td>
+          <td>${suggestion}</td>
+        `;
+        compBody.appendChild(tr);
+      });
     }
 
     function addBatchSkuRow() {
